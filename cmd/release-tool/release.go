@@ -92,6 +92,7 @@ var helmChartCmd = &cobra.Command{
 		if release == nil {
 			return errors.New("couldn't find matching helm charts")
 		}
+		_, _ = cmd.OutOrStdout().Write([]byte("Found helm chart"))
 		// TODO we could update the release with a link to artifactory
 		return nil
 	},
@@ -113,8 +114,39 @@ var pulpCmd = &cobra.Command{
 				merr = multierror.Append(merr, fmt.Errorf("couldn't get %s: %w", url, err))
 			} else if r.StatusCode != 200 {
 				merr = multierror.Append(merr, fmt.Errorf("couldn't get %s: %d", url, r.StatusCode))
+			} else {
+				_, _ = cmd.OutOrStdout().Write([]byte(fmt.Sprintf("Found: %s\n", url)))
+
 			}
-			r.Body.Close()
+			_ = r.Body.Close()
+		}
+		return merr.ErrorOrNil()
+	},
+}
+
+var dockerImages []string
+var dockerRepository string
+var dockerCmd = &cobra.Command{
+	Use:   "docker",
+	Short: "Check all images",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(dockerImages) == 0 {
+			return errors.New("need to specify some docker images")
+		}
+		if dockerRepository == "" {
+			return errors.New("need to specify a docker repository")
+		}
+		var merr *multierror.Error
+		for _, i := range dockerImages {
+			img := fmt.Sprintf("%s/%s:%s", dockerRepository, i, config.release)
+			r, err := http.Head(fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/%s/tags/%s", dockerRepository, i, config.release))
+			if err != nil {
+				merr = multierror.Append(merr, fmt.Errorf("failed with image: %s %w", img, err))
+			} else if r.StatusCode != 200 {
+				merr = multierror.Append(merr, fmt.Errorf("failed with image: %s status: %d", img, r.StatusCode))
+			} else {
+				_, _ = cmd.OutOrStdout().Write([]byte(fmt.Sprintf("Got image: %s\n", img)))
+			}
 		}
 		return merr.ErrorOrNil()
 	},
@@ -155,7 +187,13 @@ func init() {
 	pulpCmd.Flags().StringVar(&config.release, "release", "", "The name of the release to publish")
 	pulpCmd.Flags().StringSliceVar(&binaries, "binaries", binaries, "A comma separated list of targets (.e.g: centos-amd64,darwin-arm64)")
 
+	dockerCmd.Flags().StringVar(&config.repo, "repo", "kumahq/kuma", "The repository to query")
+	dockerCmd.Flags().StringVar(&config.release, "release", "", "The name of the release to publish")
+	dockerCmd.Flags().StringVar(&dockerRepository, "docker-repo", "", "The name of the docker repo")
+	dockerCmd.Flags().StringSliceVar(&dockerImages, "images", dockerImages, "A comma separated list of images (.e.g: kumactl,kuma-cp)")
+
 	releaseCmd.AddCommand(githubReleaseChangelogCmd)
 	releaseCmd.AddCommand(helmChartCmd)
 	releaseCmd.AddCommand(pulpCmd)
+	releaseCmd.AddCommand(dockerCmd)
 }
