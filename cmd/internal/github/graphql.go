@@ -87,10 +87,10 @@ type GQLRefTarget struct {
 
 type GQLClient struct {
 	Token string
-	cl    *github.Client
+	Cl    *github.Client
 }
 
-func splitRepo(repo string) (string, string) {
+func SplitRepo(repo string) (string, string) {
 	r := strings.Split(repo, "/")
 	return r[0], r[1]
 }
@@ -104,11 +104,11 @@ func GqlClientFromEnv() *GQLClient {
 		}
 	}
 	cl := github.NewTokenClient(context.Background(), token)
-	return &GQLClient{Token: token,  cl: cl}
+	return &GQLClient{Token: token, Cl: cl}
 }
 
 func (c GQLClient) ReleaseGraphQL(repo string) ([]GQLRelease, error) {
-	owner, name := splitRepo(repo)
+	owner, name := SplitRepo(repo)
 	res, err := c.graphqlQuery(`
 query($name: String!, $owner: String!) {
   repository(owner: $owner, name: $name) {
@@ -133,7 +133,7 @@ query($name: String!, $owner: String!) {
 }
 
 func (c GQLClient) HistoryGraphQl(repo, branch, commitLimit string) ([]GQLCommit, error) {
-	owner, name := splitRepo(repo)
+	owner, name := SplitRepo(repo)
 	var out []GQLCommit
 	var err error
 	var res GQLOutput
@@ -188,7 +188,7 @@ query($name: String!, $owner: String!, $branch: String!) {
 }
 
 func (c GQLClient) CommitByRef(repo, tag string) (string, error) {
-	owner, name := splitRepo(repo)
+	owner, name := SplitRepo(repo)
 	res, err := c.graphqlQuery(`
 query ($owner: String!, $name: String!, $ref: String!) {
   repository(name: $name, owner: $owner) {
@@ -237,13 +237,36 @@ func (c GQLClient) graphqlQuery(query string, variables map[string]interface{}) 
 	return out, err
 }
 
-func (c GQLClient) UpsertRelease(ctx context.Context, repo string, release string, content string, existingReleaseId int) error {
-	owner, name :=  splitRepo(repo)
-	releasePayload := &github.RepositoryRelease{Name: &release, Body: &content, Draft: github.Bool(true), TagName: &release}
-	if existingReleaseId == 0 {
-		_, _, err := c.cl.Repositories.CreateRelease(ctx, owner, name, releasePayload)
+func (c GQLClient) UpsertRelease(ctx context.Context, repo string, release string, contentModifier func(repositoryRelease *github.RepositoryRelease) error) error {
+	releases, err := c.ReleaseGraphQL(repo)
+	if err != nil {
 		return err
 	}
-	_, _, err := c.cl.Repositories.EditRelease(ctx, owner, name, int64(existingReleaseId), releasePayload)
+	var existingRelease *GQLRelease
+	for _, r := range releases {
+		if r.Name == release {
+			existingRelease = &r
+			break
+		}
+	}
+	owner, name := SplitRepo(repo)
+	if existingRelease == nil {
+		releasePayload := &github.RepositoryRelease{Name: &release, Draft: github.Bool(true), TagName: &release}
+		err := contentModifier(releasePayload)
+		if err != nil {
+			return err
+		}
+		_, _, err = c.Cl.Repositories.CreateRelease(ctx, owner, name, releasePayload)
+		return err
+	}
+	releasePayload, _, err := c.Cl.Repositories.GetRelease(ctx, owner, name, int64(existingRelease.Id))
+	if err != nil {
+		return err
+	}
+	err = contentModifier(releasePayload)
+	if err != nil {
+		return err
+	}
+	_, _, err = c.Cl.Repositories.EditRelease(ctx, owner, name, int64(existingRelease.Id), releasePayload)
 	return err
 }

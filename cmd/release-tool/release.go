@@ -3,12 +3,15 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/kumahq/ci-tools/cmd/release-tool/internal/github"
+	github2 "github.com/google/go-github/v50/github"
+	"github.com/hashicorp/go-multierror"
+	"github.com/kumahq/ci-tools/cmd/internal/github"
 	"github.com/spf13/cobra"
+	"net/http"
 	"strings"
 )
 
-var githubReleaseChangelog = &cobra.Command{
+var githubReleaseChangelogCmd = &cobra.Command{
 	Use:   "changelog",
 	Short: "create or update a release in github with the generated changelog",
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -22,11 +25,6 @@ var githubReleaseChangelog = &cobra.Command{
 			prevVersion = fmt.Sprintf("%d.%d.%d", major, minor, patch-1)
 		}
 
-		gqlClient := github.GqlClientFromEnv()
-		releases, err := gqlClient.ReleaseGraphQL(config.repo)
-		if err != nil {
-			return err
-		}
 		header := `We are excited to announce the latest release !
 TODO short description of the biggest features
 
@@ -44,31 +42,81 @@ TODO summary of some simple stuff.
 
 `
 		}
-		existingReleaseId := 0
-		for _, r := range releases {
-			if r.Name == config.release {
-				existingReleaseId = r.Id
-				if !r.IsDraft {
-					return fmt.Errorf("release :%s has already published release notes, updating release-notes of released versions is not supported", config.release)
-				}
-				header = strings.SplitN(r.Description, "## Changelog", 2)[0] + "## Changelog\n\n"
-				break
+
+		gqlClient := github.GqlClientFromEnv()
+		return gqlClient.UpsertRelease(cmd.Context(), config.repo, config.release, func(release *github2.RepositoryRelease) error {
+			if !release.GetDraft() {
+				return fmt.Errorf("release :%s has already published release notes, updating release-notes of released versions is not supported", release)
 			}
-		}
-		sbuilder := &strings.Builder{}
-		sbuilder.WriteString(header)
-		changelog, err := getChangelog(gqlClient, config.repo, branch, prevVersion)
-		if err != nil {
-			return err
-		}
-		for _, v := range changelog {
-			_, err = fmt.Fprintf(sbuilder, "* %s\n", v)
+			sbuilder := &strings.Builder{}
+			if release.Body != nil {
+				header = strings.SplitN(release.GetBody(), "## Changelog", 2)[0] + "## Changelog\n\n"
+			}
+			sbuilder.WriteString(header)
+			changelog, err := getChangelog(gqlClient, config.repo, branch, prevVersion)
 			if err != nil {
 				return err
 			}
-		}
+			for _, v := range changelog {
+				_, err = fmt.Fprintf(sbuilder, "* %s\n", v)
+				if err != nil {
+					return err
+				}
+			}
+			release.Body = github2.String(sbuilder.String())
+			return nil
+		})
+	},
+}
 
-		return gqlClient.UpsertRelease(cmd.Context(), config.repo, config.release, sbuilder.String(), existingReleaseId)
+var helmChartCmd = &cobra.Command{
+	Use:   "helm-chart",
+	Short: "add a reference to the helm chart in the release notes",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if chartRepo == "" {
+			return errors.New("must set --charts-repo")
+		}
+		gqlClient := github.GqlClientFromEnv()
+		releases, err := gqlClient.ReleaseGraphQL(chartRepo)
+		if err != nil {
+			return err
+		}
+		expectedName := fmt.Sprintf("%s-%s", strings.Split(config.repo, "/")[1], config.release)
+		var release *github.GQLRelease
+		for _, r := range releases {
+			if r.Name == expectedName {
+				release = &r
+				break
+			}
+		}
+		if release == nil {
+			return errors.New("couldn't find matching helm charts")
+		}
+		// TODO we could update the release with a link to artifactory
+		return nil
+	},
+}
+
+var pulpCmd = &cobra.Command{
+	Use:   "pulp-binaries",
+	Short: "Check all binaries are present on pulp",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(binaries) == 0 {
+			return errors.New("need to specific at least one binary")
+		}
+		var merr *multierror.Error
+		_, name := github.SplitRepo(config.repo)
+		for _, binary := range binaries {
+			url := fmt.Sprintf("https://download.konghq.com/mesh-alpine/%s-%s-%s.tar.gz", name, config.release, binary)
+			r, err := http.Get(url)
+			if err != nil {
+				merr = multierror.Append(merr, fmt.Errorf("couldn't get %s: %w", url, err))
+			} else if r.StatusCode != 200 {
+				merr = multierror.Append(merr, fmt.Errorf("couldn't get %s: %d", url, r.StatusCode))
+			}
+			r.Body.Close()
+		}
+		return merr.ErrorOrNil()
 	},
 }
 
@@ -93,8 +141,21 @@ var releaseCmd = &cobra.Command{
 	},
 }
 
+var binaries []string
+var chartRepo string
+
 func init() {
-	githubReleaseChangelog.Flags().StringVar(&config.release, "release", "", "The name of the release to publish")
-	githubReleaseChangelog.Flags().StringVar(&config.repo, "repo", "kumahq/kuma", "The repository to query")
-	releaseCmd.AddCommand(githubReleaseChangelog)
+	githubReleaseChangelogCmd.Flags().StringVar(&config.release, "release", "", "The name of the release to publish")
+	githubReleaseChangelogCmd.Flags().StringVar(&config.repo, "repo", "kumahq/kuma", "The repository to query")
+	helmChartCmd.Flags().StringVar(&chartRepo, "charts-repo", "", "The repository to query")
+	helmChartCmd.Flags().StringVar(&config.repo, "repo", "kumahq/kuma", "The repository to query")
+	helmChartCmd.Flags().StringVar(&config.release, "release", "", "The name of the release to publish")
+
+	pulpCmd.Flags().StringVar(&config.repo, "repo", "kumahq/kuma", "The repository to query")
+	pulpCmd.Flags().StringVar(&config.release, "release", "", "The name of the release to publish")
+	pulpCmd.Flags().StringSliceVar(&binaries, "binaries", binaries, "A comma separated list of targets (.e.g: centos-amd64,darwin-arm64)")
+
+	releaseCmd.AddCommand(githubReleaseChangelogCmd)
+	releaseCmd.AddCommand(helmChartCmd)
+	releaseCmd.AddCommand(pulpCmd)
 }

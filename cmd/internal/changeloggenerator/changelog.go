@@ -2,12 +2,11 @@ package changeloggenerator
 
 import (
 	"fmt"
-	"github.com/kumahq/ci-tools/cmd/release-tool/internal/github"
+	"github.com/kumahq/ci-tools/cmd/internal/github"
 	"regexp"
 	"sort"
 	"strings"
 )
-
 
 func New(repo string, input []github.GQLCommit) (Changelog, error) {
 	byChangelog := map[string][]*commitInfo{}

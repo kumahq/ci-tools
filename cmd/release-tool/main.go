@@ -21,14 +21,15 @@ func main() {
 		os.Exit(1)
 	}
 }
+
 var config Config
 
 type Config struct {
-	branch     string
-	repo       string
-	fromTag    string
-	format     string
-	release    string
+	branch  string
+	repo    string
+	fromTag string
+	format  string
+	release string
 }
 
 func (c Config) SplitSemVer() (int, int, int, error) {
@@ -50,7 +51,6 @@ func (c Config) SplitSemVer() (int, int, int, error) {
 	}
 	return major, minor, patch, nil
 }
-
 
 var rootCmd = &cobra.Command{
 	Use:   "release-tool",

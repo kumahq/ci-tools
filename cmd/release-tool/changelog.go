@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/kumahq/ci-tools/cmd/release-tool/internal/changeloggenerator"
-	"github.com/kumahq/ci-tools/cmd/release-tool/internal/github"
+	"github.com/kumahq/ci-tools/cmd/internal/changeloggenerator"
+	"github.com/kumahq/ci-tools/cmd/internal/github"
 	"strings"
 
 	"github.com/spf13/cobra"
