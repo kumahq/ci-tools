@@ -14,7 +14,7 @@ build/release-tool:
 check:
 	go fmt ./...
 	go mod tidy
-	golangci-lint run
+	test -n "$$CI" || golangci-lint run -v
 
 .PHONY: test
 test:
