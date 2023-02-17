@@ -165,7 +165,7 @@ var releaseCmd = &cobra.Command{
 		}
 
 		var err error
-		major, minor, patch, err = config.SplitSemVer()
+		major, minor, patch, err = SplitSemVer(config.release)
 		return err
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
