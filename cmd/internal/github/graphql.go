@@ -44,6 +44,7 @@ type GQLRelease struct {
 	IsPrerelease bool      `json:"isPrerelease"`
 	Description  string    `json:"description"`
 	Id           int       `json:"databaseId"`
+	IsLatest     bool      `json:"isLatest"`
 }
 
 type GQLObjectRepo struct {
@@ -121,6 +122,7 @@ query($name: String!, $owner: String!) {
         isPrerelease
         description
         databaseId
+        isLatest
       }
     }
   }
