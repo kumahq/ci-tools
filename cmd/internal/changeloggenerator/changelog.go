@@ -2,21 +2,18 @@ package changeloggenerator
 
 import (
 	"fmt"
-	"github.com/kumahq/ci-tools/cmd/internal/github"
 	"regexp"
 	"sort"
 	"strings"
 )
 
-func New(repo string, input []github.GQLCommit) (Changelog, error) {
-	byChangelog := map[string][]*commitInfo{}
+func New(repo string, input []CommitInfo) (Changelog, error) {
+	byChangelog := map[string][]*CommitInfo{}
 	// Rollup changes together
 	for i := range input {
-		ci := newCommitInfo(input[i])
-		if ci == nil {
-			continue
+		if (&input[i]).normalize() {
+			byChangelog[input[i].changelog] = append(byChangelog[input[i].changelog], &input[i])
 		}
-		byChangelog[ci.Changelog] = append(byChangelog[ci.Changelog], ci)
 	}
 	// Create a list to display
 	var out []ChangelogItem
@@ -37,9 +34,9 @@ func New(repo string, input []github.GQLCommit) (Changelog, error) {
 			uniquePrs[c.PrNumber] = nil
 			prs = append(prs, c.PrNumber)
 			if minVersion == "" {
-				minVersion = c.MinDependency
+				minVersion = c.startDependency
 			}
-			maxVersion = c.MaxDependency
+			maxVersion = c.endDependency
 			if _, exists := uniqueAuthors[c.Author]; !exists {
 				authors = append(authors, fmt.Sprintf("@%s", c.Author))
 				uniqueAuthors[c.Author] = nil
@@ -83,60 +80,52 @@ func (c ChangelogItem) String() string {
 	return fmt.Sprintf("%s %s %s", c.Desc, strings.Join(prLinks, " "), strings.Join(authors, ","))
 }
 
-type commitInfo struct {
-	Sha           string
-	Author        string
-	PrNumber      int
-	PrTitle       string
-	Changelog     string
-	MinDependency string
-	MaxDependency string
+type CommitInfo struct {
+	Sha             string
+	Author          string
+	PrNumber        int
+	PrTitle         string
+	PrBody          string
+	CommitMessage   string
+	changelog       string
+	startDependency string
+	endDependency   string
 }
 
 // titles look like: chore(deps): bump github.com/lib/pq from 1.10.6 to 1.10.7
-var dependabotPRTitleRegExp = regexp.MustCompile(`(chore\(deps\): bump [^ ]+) from ([^ ]+) to ([^ ]+).*`)
+var dependabotPRTitleRegExp = regexp.MustCompile(`(chore\(deps\): [bB]ump [^ ]+) from ([^ ]+) to ([^ ]+).*`)
 
-func newCommitInfo(commit github.GQLCommit) *commitInfo {
-	if len(commit.AssociatedPullRequests.Nodes) == 0 {
-		return nil
-	}
-	pr := commit.AssociatedPullRequests.Nodes[0]
-	res := &commitInfo{
-		Author:   pr.Author.Login,
-		Sha:      commit.Oid,
-		PrNumber: pr.Number,
-		PrTitle:  pr.Title,
-	}
+func (ci *CommitInfo) normalize() bool {
 	changelog := ""
-	for _, l := range strings.Split(pr.Body, "\n") {
+	for _, l := range strings.Split(ci.PrBody, "\n") {
 		if strings.HasPrefix(l, "> Changelog: ") {
 			changelog = strings.TrimSpace(strings.TrimPrefix(l, "> Changelog: "))
 		}
 	}
 	switch changelog {
 	case "skip":
-		return nil
+		return false
 	case "":
 		// Ignore prs with usually ignored prefix
 		for _, v := range []string{"build", "ci", "test", "refactor", "fix(ci)", "fix(test)", "docs"} {
-			if strings.HasPrefix(commit.Message, v) {
-				return nil
+			if strings.HasPrefix(ci.CommitMessage, v) {
+				return false
 			}
 		}
 		// Only prs with chore(deps) are included
-		if strings.HasPrefix(commit.Message, "chore") && !strings.HasPrefix(commit.Message, "chore(deps)") {
-			return nil
+		if strings.HasPrefix(ci.CommitMessage, "chore") && !strings.HasPrefix(ci.CommitMessage, "chore(deps)") {
+			return false
 		}
 		// Use the pr.Title as a changelog entry
-		res.Changelog = pr.Title
+		ci.changelog = ci.PrTitle
 	default:
-		res.Changelog = changelog
+		ci.changelog = changelog
 	}
-	if matches := dependabotPRTitleRegExp.FindStringSubmatch(res.Changelog); matches != nil {
+	if matches := dependabotPRTitleRegExp.FindStringSubmatch(ci.changelog); matches != nil {
 		// Rollup dependabot issues with the same dependency into just one so we can rebuild a single line with all update PRs.
-		res.Changelog = matches[1]
-		res.MinDependency = matches[2]
-		res.MaxDependency = matches[3]
+		ci.changelog = strings.ReplaceAll(matches[1], "Bump", "bump")
+		ci.startDependency = matches[2]
+		ci.endDependency = matches[3]
 	}
-	return res
+	return true
 }
