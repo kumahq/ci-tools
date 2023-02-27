@@ -3,7 +3,7 @@ module github.com/kumahq/ci-tools
 go 1.18
 
 require (
-	github.com/google/go-github/v50 v50.0.0
+	github.com/google/go-github/v50 v50.1.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/spf13/cobra v1.6.1
 )
