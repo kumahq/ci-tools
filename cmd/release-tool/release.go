@@ -8,6 +8,7 @@ import (
 	"github.com/kumahq/ci-tools/cmd/internal/github"
 	"github.com/spf13/cobra"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -108,14 +109,18 @@ var pulpCmd = &cobra.Command{
 		var merr *multierror.Error
 		_, name := github.SplitRepo(config.repo)
 		for _, binary := range binaries {
-			url := fmt.Sprintf("https://download.konghq.com/mesh-alpine/%s-%s-%s.tar.gz", name, config.release, binary)
-			r, err := http.Get(url)
+			u, err := url.JoinPath(pulpUrl, fmt.Sprintf("/%s-%s-%s.tar.gz", name, config.release, binary))
 			if err != nil {
-				merr = multierror.Append(merr, fmt.Errorf("couldn't get %s: %w", url, err))
+				merr = multierror.Append(merr, fmt.Errorf("couldn't join url path: %w", err))
+				continue
+			}
+			r, err := http.Get(u)
+			if err != nil {
+				merr = multierror.Append(merr, fmt.Errorf("couldn't get %s: %w", u, err))
 			} else if r.StatusCode != 200 {
-				merr = multierror.Append(merr, fmt.Errorf("couldn't get %s: %d", url, r.StatusCode))
+				merr = multierror.Append(merr, fmt.Errorf("couldn't get %s: %d", u, r.StatusCode))
 			} else {
-				_, _ = cmd.OutOrStdout().Write([]byte(fmt.Sprintf("Found: %s\n", url)))
+				_, _ = cmd.OutOrStdout().Write([]byte(fmt.Sprintf("Found: %s\n", u)))
 
 			}
 			_ = r.Body.Close()
@@ -174,6 +179,7 @@ var releaseCmd = &cobra.Command{
 }
 
 var binaries []string
+var pulpUrl string
 var chartRepo string
 
 func init() {
@@ -186,6 +192,7 @@ func init() {
 	pulpCmd.Flags().StringVar(&config.repo, "repo", "kumahq/kuma", "The repository to query")
 	pulpCmd.Flags().StringVar(&config.release, "release", "", "The name of the release to publish")
 	pulpCmd.Flags().StringSliceVar(&binaries, "binaries", binaries, "A comma separated list of targets (.e.g: centos-amd64,darwin-arm64)")
+	pulpCmd.Flags().StringVar(&pulpUrl, "base-url", "https://download.konghq.com/mesh-alpine/", "The url where releases are published")
 
 	dockerCmd.Flags().StringVar(&config.repo, "repo", "kumahq/kuma", "The repository to query")
 	dockerCmd.Flags().StringVar(&config.release, "release", "", "The name of the release to publish")

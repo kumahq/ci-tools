@@ -34,7 +34,7 @@ type Config struct {
 
 func SplitSemVer(in string) (int, int, int, error) {
 	sp := strings.Split(in, ".")
-	if len(sp) != 3 {
+	if len(sp) < 3 {
 		return 0, 0, 0, fmt.Errorf("%s is not a valid semver", in)
 	}
 	major, err := strconv.Atoi(sp[0])
@@ -45,7 +45,7 @@ func SplitSemVer(in string) (int, int, int, error) {
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("minor part of semver is not a number")
 	}
-	patch, err := strconv.Atoi(sp[2])
+	patch, err := strconv.Atoi(strings.Split(sp[2], "-")[0])
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("patch part of semver is not a number")
 	}
