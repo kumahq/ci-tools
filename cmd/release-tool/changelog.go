@@ -23,7 +23,7 @@ var autoChangelog = &cobra.Command{
 	Use:   "changelog.md",
 	Short: "Recreate the changelog.md using the changelog in each github release",
 	Long: `
-	We use whatever is after '## changelog' to build the changelog 
+	We use whatever is after '## Changelog' to build the changelog
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		gqlClient := github.GqlClientFromEnv()
@@ -57,8 +57,8 @@ var autoChangelog = &cobra.Command{
 			if release.IsDraft || release.IsPrerelease { // If the release is not an actual release don't add in changelog.md
 				continue
 			}
-			if strings.Contains(release.Description, "## changelog") {
-				changelog := strings.SplitN(release.Description, "## changelog", 2)[1]
+			if strings.Contains(release.Description, "## Changelog") {
+				changelog := strings.SplitN(release.Description, "## Changelog", 2)[1]
 				_, _ = cmd.OutOrStdout().Write([]byte(fmt.Sprintf(`
 ## %s
 > Released on %s%s
@@ -77,10 +77,10 @@ var versionChangelog = &cobra.Command{
 This will get all the commits in the branch after '--from-tag'
 It will retrieve all the associated PRs to these commits and extract a changelog entry following these rules:
 
-- If there's in the PR description an entry '> changelog:'
+- If there's in the PR description an entry '> Changelog:'
 	- If it's 'skip' --> This PR won't be listed in the changelog
 	- Use this as the value for the changelog
-- If the PR title starts with ci, test, refactor, build... skip the entry (if you still want it add a '> changelog:' line in the PR description.
+- If the PR title starts with ci, test, refactor, build... skip the entry (if you still want it add a '> Changelog:' line in the PR description.
 - Else use the PR title in the changelog
 
 It will then output a changelog with all PRs with the same changelog grouped together
