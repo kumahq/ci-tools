@@ -23,7 +23,7 @@ var autoChangelog = &cobra.Command{
 	Use:   "changelog.md",
 	Short: "Recreate the changelog.md using the changelog in each github release",
 	Long: `
-	We use whatever is after '## Changelog' to build the changelog 
+	We use whatever is after '## Changelog' to build the changelog
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		gqlClient := github.GqlClientFromEnv()
@@ -122,7 +122,23 @@ func getChangelog(gqlClient *github.GQLClient, repo string, branch string, tag s
 	if err != nil {
 		return nil, err
 	}
-	return changeloggenerator.New(config.repo, res)
+	var commitInfos []changeloggenerator.CommitInfo
+	for _, commit := range res {
+		if len(commit.AssociatedPullRequests.Nodes) == 0 {
+			continue
+		}
+		pr := commit.AssociatedPullRequests.Nodes[0]
+		ci := changeloggenerator.CommitInfo{
+			Author:        pr.Author.Login,
+			Sha:           commit.Oid,
+			PrNumber:      pr.Number,
+			PrTitle:       pr.Title,
+			PrBody:        pr.Body,
+			CommitMessage: commit.Message,
+		}
+		commitInfos = append(commitInfos, ci)
+	}
+	return changeloggenerator.New(config.repo, commitInfos)
 }
 
 func init() {
