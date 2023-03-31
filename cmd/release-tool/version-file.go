@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/kumahq/ci-tools/cmd/internal/github"
 	"github.com/spf13/cobra"
@@ -16,6 +17,7 @@ var lifetimeMonths int
 var edition string
 var minVersion string
 var includeDev bool
+var activeBranches bool
 
 type VersionEntry struct {
 	Edition       string `yaml:"edition"`
@@ -96,6 +98,16 @@ var versionFile = &cobra.Command{
 				EndOfLifeDate: "2030-01-01",
 			})
 		}
+		if activeBranches {
+			var branches []string
+			for _, v := range out {
+				t, _ := time.Parse(time.DateOnly, v.EndOfLifeDate)
+				if time.Now().Before(t) {
+					branches = append(branches, v.Branch)
+				}
+			}
+			return json.NewEncoder(cmd.OutOrStdout()).Encode(branches)
+		}
 		return yaml.NewEncoder(cmd.OutOrStdout()).Encode(out)
 	},
 }
@@ -119,4 +131,5 @@ func init() {
 	versionFile.Flags().IntVar(&lifetimeMonths, "lifetime-months", 12, "the number of months a version is valid for")
 	versionFile.Flags().StringVar(&minVersion, "min-version", "1.1.0", "The minimum version to build a version files on")
 	versionFile.Flags().BoolVar(&includeDev, "include-dev", true, "Skip dev")
+	versionFile.Flags().BoolVar(&activeBranches, "active-branches", false, "only output a json with the branches not EOL")
 }
