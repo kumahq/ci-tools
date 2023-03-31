@@ -129,7 +129,7 @@ func init() {
 	versionFile.Flags().StringVar(&config.repo, "repo", "kumahq/kuma", "The repository to query")
 	versionFile.Flags().StringVar(&edition, "edition", "kuma", "The edition of the product")
 	versionFile.Flags().IntVar(&lifetimeMonths, "lifetime-months", 12, "the number of months a version is valid for")
-	versionFile.Flags().StringVar(&minVersion, "min-version", "1.1.0", "The minimum version to build a version files on")
+	versionFile.Flags().StringVar(&minVersion, "min-version", "1.2.0", "The minimum version to build a version files on")
 	versionFile.Flags().BoolVar(&includeDev, "include-dev", true, "Skip dev")
 	versionFile.Flags().BoolVar(&activeBranches, "active-branches", false, "only output a json with the branches not EOL")
 }
