@@ -13,6 +13,7 @@ func init() {
 	rootCmd.AddCommand(versionChangelog)
 	rootCmd.AddCommand(releaseCmd)
 	rootCmd.AddCommand(autoChangelog)
+	rootCmd.AddCommand(versionFile)
 }
 
 func main() {
