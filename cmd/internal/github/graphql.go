@@ -5,9 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/kumahq/ci-tools/cmd/internal/version"
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -45,6 +47,30 @@ type GQLRelease struct {
 	Description  string    `json:"description"`
 	Id           int       `json:"databaseId"`
 	IsLatest     bool      `json:"isLatest"`
+}
+
+// IsReleased returns if the release in not prerelease not a draft
+func (r GQLRelease) IsReleased() bool {
+	return !r.IsDraft && !r.IsPrerelease
+}
+
+var releasedOnRegexp = regexp.MustCompile("^> Released on ([0-9]{4}/[0-9]{2}/[0-9]{2})")
+
+// ExtractReleaseDate returns the date this was published, if there's a `> Released on YYYY/MM/DD` in the description it uses this,
+// otherwise it uses the PublishedAt data from Github.
+func (r GQLRelease) ExtractReleaseDate() (time.Time, error) {
+	res := releasedOnRegexp.FindStringSubmatch(r.Description)
+	if len(res) == 2 {
+		return time.Parse("2006/01/02", res[1])
+	}
+	return r.PublishedAt, nil
+}
+
+// Branch branch that this release was first on
+func (r GQLRelease) Branch() string {
+	// In theory we could extract this from the tag but let's keep this simple
+	major, minor, _ := version.MustSplitSemVer(r.Name)
+	return fmt.Sprintf("release-%d.%d", major, minor)
 }
 
 type GQLObjectRepo struct {
