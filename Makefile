@@ -1,3 +1,6 @@
+.PHONY: all
+all: build check test
+
 .PHONY: build
 build: build/release-tool
 

@@ -6,6 +6,7 @@ import (
 	github2 "github.com/google/go-github/v50/github"
 	"github.com/hashicorp/go-multierror"
 	"github.com/kumahq/ci-tools/cmd/internal/github"
+	"github.com/kumahq/ci-tools/cmd/internal/version"
 	"github.com/spf13/cobra"
 	"net/http"
 	"net/url"
@@ -170,7 +171,7 @@ var releaseCmd = &cobra.Command{
 		}
 
 		var err error
-		major, minor, patch, err = SplitSemVer(config.release)
+		major, minor, patch, err = version.SplitSemVer(config.release)
 		return err
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
