@@ -1,9 +1,10 @@
 package changeloggenerator_test
 
 import (
-	"github.com/kumahq/ci-tools/cmd/internal/changeloggenerator"
 	"reflect"
 	"testing"
+
+	"github.com/kumahq/ci-tools/cmd/internal/changeloggenerator"
 )
 
 func TestChangelogGenerator(t *testing.T) {

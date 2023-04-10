@@ -1,0 +1,15 @@
+linters:
+  enable:
+    - gci
+    - gofumpt
+    - misspell
+
+linters-settings:
+  gci:
+    sections:
+    - standard
+    - default
+    - prefix(github.com/kumahq)
+    
+run:
+  timeout: 5m

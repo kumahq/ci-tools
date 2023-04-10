@@ -3,20 +3,24 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
+	"time"
+
+	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
+
 	"github.com/kumahq/ci-tools/cmd/internal/github"
 	"github.com/kumahq/ci-tools/cmd/internal/version"
 	"github.com/kumahq/ci-tools/cmd/internal/versionfile"
-	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
-	"sort"
-	"time"
 )
 
-var lifetimeMonths int
-var edition string
-var minVersion string
-var includeDev bool
-var activeBranches bool
+var (
+	lifetimeMonths int
+	edition        string
+	minVersion     string
+	includeDev     bool
+	activeBranches bool
+)
 
 var versionFile = &cobra.Command{
 	Use:   "version-file",

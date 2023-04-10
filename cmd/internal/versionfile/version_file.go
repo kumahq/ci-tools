@@ -2,12 +2,13 @@ package versionfile
 
 import (
 	"fmt"
-	"github.com/kumahq/ci-tools/cmd/internal/github"
-	"github.com/kumahq/ci-tools/cmd/internal/version"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/kumahq/ci-tools/cmd/internal/github"
+	"github.com/kumahq/ci-tools/cmd/internal/version"
 )
 
 func Dev(edition string) VersionEntry {
@@ -80,5 +81,4 @@ func extractStartAndEOLDates(lifetimeMonths int, releases []github.GQLRelease) (
 	}
 	EOLDate := releaseDate.AddDate(0, lifetimeMonths, 0)
 	return releaseDate.Format(time.DateOnly), EOLDate.Format(time.DateOnly), nil
-
 }
