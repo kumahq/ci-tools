@@ -4,13 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/kumahq/ci-tools/cmd/internal/changeloggenerator"
-	"github.com/kumahq/ci-tools/cmd/internal/github"
-	"github.com/kumahq/ci-tools/cmd/internal/version"
-	"github.com/spf13/cobra"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/spf13/cobra"
+
+	"github.com/kumahq/ci-tools/cmd/internal/changeloggenerator"
+	"github.com/kumahq/ci-tools/cmd/internal/github"
+	"github.com/kumahq/ci-tools/cmd/internal/version"
 )
 
 type OutFormat string

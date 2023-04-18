@@ -3,14 +3,16 @@ package main
 import (
 	"errors"
 	"fmt"
-	github2 "github.com/google/go-github/v50/github"
-	"github.com/hashicorp/go-multierror"
-	"github.com/kumahq/ci-tools/cmd/internal/github"
-	"github.com/kumahq/ci-tools/cmd/internal/version"
-	"github.com/spf13/cobra"
 	"net/http"
 	"net/url"
 	"strings"
+
+	github2 "github.com/google/go-github/v50/github"
+	"github.com/hashicorp/go-multierror"
+	"github.com/spf13/cobra"
+
+	"github.com/kumahq/ci-tools/cmd/internal/github"
+	"github.com/kumahq/ci-tools/cmd/internal/version"
 )
 
 var githubReleaseChangelogCmd = &cobra.Command{
@@ -122,7 +124,6 @@ var pulpCmd = &cobra.Command{
 				merr = multierror.Append(merr, fmt.Errorf("couldn't get %s: %d", u, r.StatusCode))
 			} else {
 				_, _ = cmd.OutOrStdout().Write([]byte(fmt.Sprintf("Found: %s\n", u)))
-
 			}
 			_ = r.Body.Close()
 		}
@@ -130,58 +131,64 @@ var pulpCmd = &cobra.Command{
 	},
 }
 
-var dockerImages []string
-var dockerRepository string
-var dockerCmd = &cobra.Command{
-	Use:   "docker",
-	Short: "Check all images",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(dockerImages) == 0 {
-			return errors.New("need to specify some docker images")
-		}
-		if dockerRepository == "" {
-			return errors.New("need to specify a docker repository")
-		}
-		var merr *multierror.Error
-		for _, i := range dockerImages {
-			img := fmt.Sprintf("%s/%s:%s", dockerRepository, i, config.release)
-			r, err := http.Head(fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/%s/tags/%s", dockerRepository, i, config.release))
-			if err != nil {
-				merr = multierror.Append(merr, fmt.Errorf("failed with image: %s %w", img, err))
-			} else if r.StatusCode != 200 {
-				merr = multierror.Append(merr, fmt.Errorf("failed with image: %s status: %d", img, r.StatusCode))
-			} else {
-				_, _ = cmd.OutOrStdout().Write([]byte(fmt.Sprintf("Got image: %s\n", img)))
+var (
+	dockerImages     []string
+	dockerRepository string
+	dockerCmd        = &cobra.Command{
+		Use:   "docker",
+		Short: "Check all images",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(dockerImages) == 0 {
+				return errors.New("need to specify some docker images")
 			}
-		}
-		return merr.ErrorOrNil()
-	},
-}
+			if dockerRepository == "" {
+				return errors.New("need to specify a docker repository")
+			}
+			var merr *multierror.Error
+			for _, i := range dockerImages {
+				img := fmt.Sprintf("%s/%s:%s", dockerRepository, i, config.release)
+				r, err := http.Head(fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/%s/tags/%s", dockerRepository, i, config.release))
+				if err != nil {
+					merr = multierror.Append(merr, fmt.Errorf("failed with image: %s %w", img, err))
+				} else if r.StatusCode != 200 {
+					merr = multierror.Append(merr, fmt.Errorf("failed with image: %s status: %d", img, r.StatusCode))
+				} else {
+					_, _ = cmd.OutOrStdout().Write([]byte(fmt.Sprintf("Got image: %s\n", img)))
+				}
+			}
+			return merr.ErrorOrNil()
+		},
+	}
+)
 
-var major, minor, patch int
-var releaseCmd = &cobra.Command{
-	Use:   "release",
-	Short: "Do a lot of possible release fun",
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		if config.repo == "" {
-			return errors.New("you must have a valid `--repo`")
-		}
-		if config.release == "" {
-			return errors.New("you must set `--release`")
-		}
+var (
+	major, minor, patch int
+	releaseCmd          = &cobra.Command{
+		Use:   "release",
+		Short: "Do a lot of possible release fun",
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if config.repo == "" {
+				return errors.New("you must have a valid `--repo`")
+			}
+			if config.release == "" {
+				return errors.New("you must set `--release`")
+			}
 
-		var err error
-		major, minor, patch, err = version.SplitSemVer(config.release)
-		return err
-	},
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return errors.New("must pass a subcommand")
-	},
-}
+			var err error
+			major, minor, patch, err = version.SplitSemVer(config.release)
+			return err
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return errors.New("must pass a subcommand")
+		},
+	}
+)
 
-var binaries []string
-var pulpUrl string
-var chartRepo string
+var (
+	binaries  []string
+	pulpUrl   string
+	chartRepo string
+)
 
 func init() {
 	githubReleaseChangelogCmd.Flags().StringVar(&config.release, "release", "", "The name of the release to publish")

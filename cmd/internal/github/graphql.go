@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/kumahq/ci-tools/cmd/internal/version"
 	"io"
 	"net/http"
 	"os"
@@ -14,6 +13,8 @@ import (
 	"time"
 
 	"github.com/google/go-github/v50/github"
+
+	"github.com/kumahq/ci-tools/cmd/internal/version"
 )
 
 type GQLOutput struct {

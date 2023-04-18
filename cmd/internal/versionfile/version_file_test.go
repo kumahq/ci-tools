@@ -1,11 +1,12 @@
 package versionfile_test
 
 import (
-	"github.com/kumahq/ci-tools/cmd/internal/github"
-	"github.com/kumahq/ci-tools/cmd/internal/versionfile"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/kumahq/ci-tools/cmd/internal/github"
+	"github.com/kumahq/ci-tools/cmd/internal/versionfile"
 )
 
 func TestBuildVersionEntry(t *testing.T) {
@@ -18,7 +19,7 @@ func TestBuildVersionEntry(t *testing.T) {
 		out              versionfile.VersionEntry
 	}
 	d1 := time.Date(2020, 12, 12, 2, 2, 2, 0, time.UTC)
-	var simpleCase = func(desc string, inReleases []github.GQLRelease, out versionfile.VersionEntry) entry {
+	simpleCase := func(desc string, inReleases []github.GQLRelease, out versionfile.VersionEntry) entry {
 		return entry{
 			desc:             desc,
 			inEdition:        "mesh",
