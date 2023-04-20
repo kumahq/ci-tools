@@ -1,5 +1,8 @@
 # Controls when the workflow will run
 on:
+  push:
+    branches:
+      - 'main'
   pull_request:
     branches:
       - 'main'
@@ -29,6 +32,7 @@ jobs:
           images: ghcr.io/${{github.repository_owner}}/ubuntu-netools
           # Docker tags based on the following events/attributes
           tags: |
+            type=ref,event=branch
             type=ref,event=pr
             type=sha
       - uses: docker/build-push-action@v4
