@@ -113,6 +113,10 @@ type GQLRefTarget struct {
 	Oid       string `json:"oid"`
 }
 
+func (r GQLRefTarget) Commit() string {
+	return r.CommitUrl[strings.LastIndex(r.CommitUrl, "/")+1:]
+}
+
 type GQLClient struct {
 	Token string
 	Cl    *github.Client
@@ -233,7 +237,8 @@ query ($owner: String!, $name: String!, $ref: String!) {
 	if err != nil {
 		return "", err
 	}
-	return res.Data.Repository.Ref.Target.Oid, nil
+	// In some cases the oid doesn't match the github commit so let's extract the commit from the url.
+	return res.Data.Repository.Ref.Target.Commit(), nil
 }
 
 func (c GQLClient) graphqlQuery(query string, variables map[string]interface{}) (GQLOutput, error) {

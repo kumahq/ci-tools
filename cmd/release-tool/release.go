@@ -57,8 +57,16 @@ TODO summary of some simple stuff.
 				header = strings.SplitN(release.GetBody(), "## Changelog", 2)[0] + "## Changelog\n\n"
 			}
 			sbuilder.WriteString(header)
+			_, err := fmt.Fprintf(cmd.OutOrStdout(), "getting changelog from %s on repo %s and branch %s\n", prevVersion, config.repo, branch)
+			if err != nil {
+				return err
+			}
 			changelog, err := getChangelog(gqlClient, config.repo, branch, prevVersion)
 			if err != nil {
+				return err
+			}
+			if len(changelog) == 0 {
+				_, err := fmt.Fprintf(cmd.OutOrStdout(), "no changelog\n")
 				return err
 			}
 			for _, v := range changelog {
