@@ -26,7 +26,7 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - id: meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           # list of Docker images to use as base name for tags
           images: ghcr.io/${{github.repository_owner}}/ubuntu-netools
