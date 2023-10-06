@@ -1,12 +1,18 @@
 name: "build"
 
 on:
-  pull_request: {}
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
     tags:
       - 'v*'
+  workflow_dispatch: {}
+
+permissions:
+  packages: write
 
 jobs:
   build:
@@ -22,3 +28,75 @@ jobs:
           args: --verbose
       - run: make test
       - run: make build
+  build-ubuntu-netools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - id: buildx
+        uses:
+          docker/setup-buildx-action@v3
+      - if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # list of Docker images to use as base name for tags
+          images: ghcr.io/${{github.repository_owner}}/ubuntu-netools
+          # Docker tags based on the following events/attributes
+          labels: |
+            org.opencontainers.image.title=Kuma netools
+            org.opencontainers.image.description=networking tools to use in Kuma's CI
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=ref,event=pr
+            type=sha
+      - uses: docker/build-push-action@v5
+        with:
+          context: docker
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          file: docker/ubuntu-netools.Dockerfile
+  build-openapi-tool:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - id: buildx
+        uses:
+          docker/setup-buildx-action@v3
+      - if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # list of Docker images to use as base name for tags
+          images: ghcr.io/${{github.repository_owner}}/openapi-tool
+          labels: |
+            org.opencontainers.image.title=Kuma openapi-tool
+            org.opencontainers.image.description=Packaged tool to use in Kuma to generate openapi specs
+          # Docker tags based on the following events/attributes
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=ref,event=pr
+            type=sha
+      - uses: docker/build-push-action@v5
+        with:
+          context: openapi-tool
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          file: openapi-tool/Dockerfile
