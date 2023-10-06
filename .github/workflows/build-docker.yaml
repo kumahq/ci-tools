@@ -70,6 +70,6 @@ jobs:
         with:
           context: openapi-tool
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true #${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           file: openapi-tool/Dockerfile
