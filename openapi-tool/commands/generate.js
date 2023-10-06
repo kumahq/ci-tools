@@ -24,7 +24,7 @@ exports.generateFiles = async (argv) => {
         // configPath: redocConfigurationPath
     });
     let hasProblems = false;
-    let expandedFiles = await fg.glob(files)
+    let expandedFiles = await fg.glob(files, {concurrency: 1})
     console.error('got all files', expandedFiles)
     let apis = (await Promise.all(expandedFiles.map(async (filename) => {
         // Check it's a openapi spec
