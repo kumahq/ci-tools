@@ -25,6 +25,7 @@ exports.generateFiles = async (argv) => {
     });
     let hasProblems = false;
     let expandedFiles = await fg.glob(files)
+    console.error('got all files', expandedFiles)
     let apis = (await Promise.all(expandedFiles.map(async (filename) => {
         // Check it's a openapi spec
         if (!await fileIsOpenApiSpec(filename)) {
