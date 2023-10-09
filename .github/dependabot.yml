@@ -19,4 +19,11 @@ updates:
     schedule:
       interval: "weekly"
     labels:
-      - "dependencies"      
+      - "dependencies"
+
+  - package-ecosystem: "npm"
+    directory: "/openapi-tools"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
