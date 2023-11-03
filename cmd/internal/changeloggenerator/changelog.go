@@ -97,8 +97,15 @@ var dependabotPRTitleRegExp = regexp.MustCompile(`(chore\(deps\): [bB]ump [^ ]+)
 
 func (ci *CommitInfo) normalize() bool {
 	changelog := ""
+	inComment := false
 	for _, l := range strings.Split(ci.PrBody, "\n") {
-		if strings.HasPrefix(l, "> Changelog: ") {
+		if strings.HasPrefix(l, "<!--") {
+			inComment = true
+		}
+		if inComment && strings.HasPrefix(l, "-->") {
+			inComment = false
+		}
+		if !inComment && strings.HasPrefix(l, "> Changelog: ") {
 			changelog = strings.TrimSpace(strings.TrimPrefix(l, "> Changelog: "))
 		}
 	}
@@ -108,12 +115,12 @@ func (ci *CommitInfo) normalize() bool {
 	case "":
 		// Ignore prs with usually ignored prefix
 		for _, v := range []string{"build", "ci", "test", "refactor", "fix(ci)", "fix(test)", "docs"} {
-			if strings.HasPrefix(ci.CommitMessage, v) {
+			if strings.HasPrefix(ci.PrTitle, v) {
 				return false
 			}
 		}
 		// Only prs with chore(deps) are included
-		if strings.HasPrefix(ci.CommitMessage, "chore") && !strings.HasPrefix(ci.CommitMessage, "chore(deps)") {
+		if strings.HasPrefix(ci.PrTitle, "chore") && !strings.HasPrefix(ci.PrTitle, "chore(deps)") {
 			return false
 		}
 		// Use the pr.Title as a changelog entry
