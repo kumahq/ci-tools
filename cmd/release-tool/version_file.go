@@ -6,10 +6,9 @@ import (
 	"sort"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
-
-	"github.com/Masterminds/semver/v3"
 
 	"github.com/kumahq/ci-tools/cmd/internal/github"
 	"github.com/kumahq/ci-tools/cmd/internal/versionfile"
