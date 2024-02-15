@@ -15,9 +15,7 @@ import (
 	"github.com/kumahq/ci-tools/cmd/internal/github"
 )
 
-var (
-	version *semver.Version
-)
+var version *semver.Version
 
 var githubReleaseChangelogCmd = &cobra.Command{
 	Use:   "changelog",
@@ -173,27 +171,25 @@ var (
 	}
 )
 
-var (
-	releaseCmd = &cobra.Command{
-		Use:   "release",
-		Short: "Do a lot of possible release fun",
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if config.repo == "" {
-				return errors.New("you must have a valid `--repo`")
-			}
-			if config.release == "" {
-				return errors.New("you must set `--release`")
-			}
+var releaseCmd = &cobra.Command{
+	Use:   "release",
+	Short: "Do a lot of possible release fun",
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if config.repo == "" {
+			return errors.New("you must have a valid `--repo`")
+		}
+		if config.release == "" {
+			return errors.New("you must set `--release`")
+		}
 
-			var err error
-			version, err = semver.NewVersion(config.release)
-			return err
-		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("must pass a subcommand")
-		},
-	}
-)
+		var err error
+		version, err = semver.NewVersion(config.release)
+		return err
+	},
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return errors.New("must pass a subcommand")
+	},
+}
 
 var (
 	binaries  []string
