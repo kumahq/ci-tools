@@ -2,11 +2,12 @@ package versionfile
 
 import (
 	"fmt"
-	"github.com/Masterminds/semver/v3"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Masterminds/semver/v3"
 
 	"github.com/kumahq/ci-tools/cmd/internal/github"
 )
