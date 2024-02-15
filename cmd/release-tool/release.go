@@ -7,26 +7,30 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	github2 "github.com/google/go-github/v50/github"
 	"github.com/hashicorp/go-multierror"
 	"github.com/spf13/cobra"
 
 	"github.com/kumahq/ci-tools/cmd/internal/github"
-	"github.com/kumahq/ci-tools/cmd/internal/version"
+)
+
+var (
+	version *semver.Version
 )
 
 var githubReleaseChangelogCmd = &cobra.Command{
 	Use:   "changelog",
 	Short: "create or update a release in github with the generated changelog",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		branch := fmt.Sprintf("release-%d.%d", major, minor)
-		var prevVersion string
-		if minor == 0 && patch == 0 { // We're shipping a new minor, we need to find the
+		branch := fmt.Sprintf("release-%d.%d", version.Major(), version.Minor())
+		var prevVersion *semver.Version
+		if version.Major() == 0 && version.Minor() == 0 { // We're shipping a new minor, we need to find the
 			return fmt.Errorf("script doesn't work with new major versions")
-		} else if patch == 0 {
-			prevVersion = fmt.Sprintf("%d.%d.0", major, minor-1)
+		} else if version.Patch() == 0 {
+			prevVersion = semver.New(version.Major(), version.Minor()-1, 0, "", "")
 		} else {
-			prevVersion = fmt.Sprintf("%d.%d.%d", major, minor, patch-1)
+			prevVersion = semver.New(version.Major(), version.Minor(), version.Patch()-1, "", "")
 		}
 
 		header := `We are excited to announce the latest release !
@@ -39,7 +43,7 @@ TODO summary of some simple stuff.
 ## Changelog
 
 `
-		if patch != 0 {
+		if version.Patch() != 0 {
 			header = `This is a patch release that every user should upgrade to.
 
 ## Changelog
@@ -61,7 +65,7 @@ TODO summary of some simple stuff.
 			if err != nil {
 				return err
 			}
-			changelog, err := getChangelog(gqlClient, config.repo, branch, prevVersion)
+			changelog, err := getChangelog(gqlClient, config.repo, branch, prevVersion.String())
 			if err != nil {
 				return err
 			}
@@ -170,8 +174,7 @@ var (
 )
 
 var (
-	major, minor, patch int
-	releaseCmd          = &cobra.Command{
+	releaseCmd = &cobra.Command{
 		Use:   "release",
 		Short: "Do a lot of possible release fun",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -183,7 +186,7 @@ var (
 			}
 
 			var err error
-			major, minor, patch, err = version.SplitSemVer(config.release)
+			version, err = semver.NewVersion(config.release)
 			return err
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {

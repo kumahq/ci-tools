@@ -12,7 +12,6 @@ import (
 
 	"github.com/kumahq/ci-tools/cmd/internal/changeloggenerator"
 	"github.com/kumahq/ci-tools/cmd/internal/github"
-	"github.com/kumahq/ci-tools/cmd/internal/version"
 )
 
 type OutFormat string
@@ -43,15 +42,7 @@ var autoChangelog = &cobra.Command{
 			}
 			// If they are release roughly at the same time we should sort them by semver order
 			if res[i].CreatedAt.Truncate(time.Hour*24) == res[j].CreatedAt.Truncate(time.Hour*24) {
-				imajor, iminor, ipatch := version.MustSplitSemVer(res[i].Name)
-				jmajor, jminor, jpatch := version.MustSplitSemVer(res[j].Name)
-				if imajor == jmajor {
-					if iminor == jminor {
-						return ipatch > jpatch
-					}
-					return iminor > jminor
-				}
-				return imajor > jmajor
+				return !res[i].SemVer().LessThan(res[j].SemVer())
 			}
 			return res[i].CreatedAt.After(res[j].CreatedAt)
 		})
