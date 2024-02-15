@@ -7,18 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kumahq/ci-tools/cmd/internal/github"
-	"github.com/kumahq/ci-tools/cmd/internal/version"
-)
+	"github.com/Masterminds/semver/v3"
 
-func Dev(edition string) VersionEntry {
-	return VersionEntry{
-		Release: "dev",
-		Edition: edition,
-		Version: "preview",
-		Branch:  "master",
-	}
-}
+	"github.com/kumahq/ci-tools/cmd/internal/github"
+)
 
 type VersionEntry struct {
 	Edition       string `yaml:"edition"`
@@ -28,15 +20,13 @@ type VersionEntry struct {
 	ReleaseDate   string `yaml:"releaseDate,omitempty"`
 	EndOfLifeDate string `yaml:"endOfLifeDate,omitempty"`
 	Branch        string `yaml:"branch"`
+	Label         string `yaml:"label,omitempty"`
 }
 
 func (v VersionEntry) Less(o VersionEntry) bool {
-	majorI, minorI, _ := version.MustSplitSemVer(strings.ReplaceAll(v.Version, "x", "0"))
-	majorJ, minorJ, _ := version.MustSplitSemVer(strings.ReplaceAll(o.Version, "x", "0"))
-	if majorI == majorJ {
-		return minorI < minorJ
-	}
-	return majorI < majorJ
+	vV := semver.MustParse(strings.ReplaceAll(v.Version, "x", "0"))
+	vO := semver.MustParse(strings.ReplaceAll(o.Version, "x", "0"))
+	return vV.LessThan(vO)
 }
 
 func BuildVersionEntry(edition string, releaseName string, lifetimeMonths int, releases []github.GQLRelease) (VersionEntry, error) {

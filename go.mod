@@ -1,8 +1,9 @@
 module github.com/kumahq/ci-tools
 
-go 1.20
+go 1.22
 
 require (
+	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/google/go-github/v50 v50.2.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/spf13/cobra v1.8.0

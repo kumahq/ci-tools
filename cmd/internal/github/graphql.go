@@ -12,9 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/google/go-github/v50/github"
-
-	"github.com/kumahq/ci-tools/cmd/internal/version"
 )
 
 type GQLOutput struct {
@@ -50,6 +49,10 @@ type GQLRelease struct {
 	IsLatest     bool      `json:"isLatest"`
 }
 
+func (r GQLRelease) SemVer() *semver.Version {
+	return semver.MustParse(strings.TrimPrefix(r.Name, "v"))
+}
+
 // IsReleased returns if the release in not prerelease not a draft
 func (r GQLRelease) IsReleased() bool {
 	return !r.IsDraft && !r.IsPrerelease
@@ -70,8 +73,8 @@ func (r GQLRelease) ExtractReleaseDate() (time.Time, error) {
 // Branch branch that this release was first on
 func (r GQLRelease) Branch() string {
 	// In theory we could extract this from the tag but let's keep this simple
-	major, minor, _ := version.MustSplitSemVer(r.Name)
-	return fmt.Sprintf("release-%d.%d", major, minor)
+	v := r.SemVer()
+	return fmt.Sprintf("release-%d.%d", v.Major(), v.Minor())
 }
 
 type GQLObjectRepo struct {
