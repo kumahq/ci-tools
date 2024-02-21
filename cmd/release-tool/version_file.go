@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
 	"time"
 
@@ -64,7 +65,7 @@ var versionFile = &cobra.Command{
 		}
 		if useLabelForDev {
 			devVersion.Label = "dev"
-			devVersion.Release = semver.MustParse(out[len(out)-1].Version).IncMinor().String()
+			devVersion.Release = regexp.MustCompile(`\.[0-9]+$`).ReplaceAllString(semver.MustParse(out[len(out)-1].Version).IncMinor().String(), ".x")
 		}
 		out = append(out, devVersion)
 		if activeBranches {
