@@ -39,6 +39,9 @@ var versionFile = &cobra.Command{
 		byVersion := map[string][]github.GQLRelease{}
 		for i := range res {
 			curVersion := res[i].SemVer()
+			if curVersion.Prerelease() != "" {
+				continue // Ignore prereleases
+			}
 			if curVersion.LessThan(minVersionVer) {
 				continue
 			}
