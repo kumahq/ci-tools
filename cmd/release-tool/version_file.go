@@ -16,11 +16,12 @@ import (
 )
 
 var (
-	lifetimeMonths int
-	edition        string
-	minVersion     string
-	activeBranches bool
-	useLabelForDev bool
+	lifetimeMonths    int
+	ltsLifetimeMonths int
+	edition           string
+	minVersion        string
+	activeBranches    bool
+	useLabelForDev    bool
 )
 
 var versionFile = &cobra.Command{
@@ -50,7 +51,7 @@ var versionFile = &cobra.Command{
 		}
 		var out []versionfile.VersionEntry
 		for releaseName, releases := range byVersion {
-			res, err := versionfile.BuildVersionEntry(edition, releaseName, lifetimeMonths, releases)
+			res, err := versionfile.BuildVersionEntry(edition, releaseName, lifetimeMonths, ltsLifetimeMonths, releases)
 			if err != nil {
 				return err
 			}
@@ -89,6 +90,7 @@ func init() {
 	versionFile.Flags().StringVar(&config.repo, "repo", "kumahq/kuma", "The repository to query")
 	versionFile.Flags().StringVar(&edition, "edition", "kuma", "The edition of the product")
 	versionFile.Flags().IntVar(&lifetimeMonths, "lifetime-months", 12, "the number of months a version is valid for")
+	versionFile.Flags().IntVar(&ltsLifetimeMonths, "lts-lifetime-months", 24, "the number of months an lts version is valid for")
 	versionFile.Flags().StringVar(&minVersion, "min-version", "1.2.0", "The minimum version to build a version files on")
 	versionFile.Flags().BoolVar(&activeBranches, "active-branches", false, "only output a json with the branches not EOL")
 	versionFile.Flags().BoolVar(&useLabelForDev, "use-label-for-dev", false, "For the master branch infer a version")

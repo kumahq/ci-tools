@@ -70,6 +70,10 @@ func (r GQLRelease) ExtractReleaseDate() (time.Time, error) {
 	return r.PublishedAt, nil
 }
 
+func (r GQLRelease) IsLTS() bool {
+	return regexp.MustCompile("^> LTS").MatchString(r.Description)
+}
+
 // Branch branch that this release was first on
 func (r GQLRelease) Branch() string {
 	// In theory we could extract this from the tag but let's keep this simple

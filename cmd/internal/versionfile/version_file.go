@@ -21,6 +21,7 @@ type VersionEntry struct {
 	EndOfLifeDate string `yaml:"endOfLifeDate,omitempty"`
 	Branch        string `yaml:"branch"`
 	Label         string `yaml:"label,omitempty"`
+	LTS           bool   `yaml:"lts,omitempty"`
 }
 
 func (v VersionEntry) Less(o VersionEntry) bool {
@@ -29,19 +30,33 @@ func (v VersionEntry) Less(o VersionEntry) bool {
 	return vV.LessThan(vO)
 }
 
-func BuildVersionEntry(edition string, releaseName string, lifetimeMonths int, releases []github.GQLRelease) (VersionEntry, error) {
-	latest := false
+func BuildVersionEntry(edition string, releaseName string, lifetimeMonths int, ltslifetimeMonths int, releases []github.GQLRelease) (VersionEntry, error) {
+	out := VersionEntry{
+		Release: releaseName,
+		Edition: edition,
+		Branch:  releases[0].Branch(),
+	}
 	for _, r := range releases {
-		latest = latest || r.IsLatest
+		out.Latest = out.Latest || r.IsLatest
 	}
 	sort.Slice(releases, func(i, j int) bool {
 		iv, _ := strconv.Atoi(strings.Split(releases[i].Name, ".")[2])
 		jv, _ := strconv.Atoi(strings.Split(releases[j].Name, ".")[2])
 		return iv < jv
 	})
-	releaseDate, EOLDate, err := extractStartAndEOLDates(lifetimeMonths, releases)
-	if err != nil {
-		return VersionEntry{}, err
+	if releases[0].IsReleased() {
+		lifetime := lifetimeMonths
+		if releases[0].IsLTS() {
+			out.LTS = true
+			lifetime = ltslifetimeMonths
+		}
+		releaseDate, err := releases[0].ExtractReleaseDate()
+		if err != nil {
+			return out, fmt.Errorf("failed to extract release date for %s because of: %s", releases[0].Name, err.Error())
+		}
+		EOLDate := releaseDate.AddDate(0, lifetime, 0)
+		out.ReleaseDate = releaseDate.Format(time.DateOnly)
+		out.EndOfLifeDate = EOLDate.Format(time.DateOnly)
 	}
 	// Retrieve the latest release that is not a draft.
 	latestRelease := releases[len(releases)-1]
@@ -50,25 +65,6 @@ func BuildVersionEntry(edition string, releaseName string, lifetimeMonths int, r
 			latestRelease = releases[i]
 		}
 	}
-	return VersionEntry{
-		Release:       releaseName,
-		Edition:       edition,
-		Version:       latestRelease.Name,
-		Latest:        latest,
-		ReleaseDate:   releaseDate,
-		EndOfLifeDate: EOLDate,
-		Branch:        releases[0].Branch(),
-	}, nil
-}
-
-func extractStartAndEOLDates(lifetimeMonths int, releases []github.GQLRelease) (string, string, error) {
-	if !releases[0].IsReleased() {
-		return "", "", nil
-	}
-	releaseDate, err := releases[0].ExtractReleaseDate()
-	if err != nil {
-		return "", "", fmt.Errorf("failed to extract release date for %s because of: %s", releases[0].Name, err.Error())
-	}
-	EOLDate := releaseDate.AddDate(0, lifetimeMonths, 0)
-	return releaseDate.Format(time.DateOnly), EOLDate.Format(time.DateOnly), nil
+	out.Version = latestRelease.Name
+	return out, nil
 }
