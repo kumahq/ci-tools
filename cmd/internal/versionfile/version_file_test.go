@@ -11,22 +11,24 @@ import (
 
 func TestBuildVersionEntry(t *testing.T) {
 	type entry struct {
-		desc             string
-		inEdition        string
-		inReleaseName    string
-		inLifetimeMonths int
-		inReleases       []github.GQLRelease
-		out              versionfile.VersionEntry
+		desc                string
+		inEdition           string
+		inReleaseName       string
+		inLifetimeMonths    int
+		inLtsLifetimeMonths int
+		inReleases          []github.GQLRelease
+		out                 versionfile.VersionEntry
 	}
 	d1 := time.Date(2020, 12, 12, 2, 2, 2, 0, time.UTC)
 	simpleCase := func(desc string, inReleases []github.GQLRelease, out versionfile.VersionEntry) entry {
 		return entry{
-			desc:             desc,
-			inEdition:        "mesh",
-			inReleaseName:    "1.2.x",
-			inLifetimeMonths: 12,
-			inReleases:       inReleases,
-			out:              out,
+			desc:                desc,
+			inEdition:           "mesh",
+			inReleaseName:       "1.2.x",
+			inLifetimeMonths:    12,
+			inLtsLifetimeMonths: 24,
+			inReleases:          inReleases,
+			out:                 out,
 		}
 	}
 	for _, v := range []entry{
@@ -70,9 +72,25 @@ func TestBuildVersionEntry(t *testing.T) {
 			},
 			versionfile.VersionEntry{Edition: "mesh", Version: "1.2.0", Release: "1.2.x", Latest: false, ReleaseDate: "2019-01-01", EndOfLifeDate: "2020-01-01", Branch: "release-1.2"},
 		),
+		simpleCase(
+			"use lts from description",
+			[]github.GQLRelease{
+				{Name: "1.2.0", Description: "> LTS", PublishedAt: d1},
+				{Name: "1.2.1", Description: "foo", PublishedAt: d1.Add(time.Hour * 48)},
+			},
+			versionfile.VersionEntry{Edition: "mesh", Version: "1.2.1", Release: "1.2.x", LTS: true, ReleaseDate: "2020-12-12", EndOfLifeDate: "2022-12-12", Branch: "release-1.2"},
+		),
+		simpleCase(
+			"ignore lts from description on not the first release",
+			[]github.GQLRelease{
+				{Name: "1.2.1", Description: "> LTS", PublishedAt: d1.Add(time.Hour * 48)},
+				{Name: "1.2.0", Description: "foo", PublishedAt: d1},
+			},
+			versionfile.VersionEntry{Edition: "mesh", Version: "1.2.1", Release: "1.2.x", ReleaseDate: "2020-12-12", EndOfLifeDate: "2021-12-12", Branch: "release-1.2"},
+		),
 	} {
 		t.Run(v.desc, func(t *testing.T) {
-			res, err := versionfile.BuildVersionEntry(v.inEdition, v.inReleaseName, v.inLifetimeMonths, v.inReleases)
+			res, err := versionfile.BuildVersionEntry(v.inEdition, v.inReleaseName, v.inLifetimeMonths, v.inLtsLifetimeMonths, v.inReleases)
 			if err != nil {
 				t.Errorf("%+v", err)
 			}
