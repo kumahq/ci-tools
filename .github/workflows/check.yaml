@@ -44,6 +44,6 @@ jobs:
         with:
           go-version-file: go.mod
       - run: make check
-      - uses: golangci/golangci-lint-action@v4
+      - uses: golangci/golangci-lint-action@v5
       - run: make test
       - run: make build
