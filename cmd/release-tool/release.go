@@ -1,11 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
+	"text/template"
 
 	"github.com/Masterminds/semver/v3"
 	github2 "github.com/google/go-github/v50/github"
@@ -112,17 +113,33 @@ var helmChartCmd = &cobra.Command{
 	},
 }
 
-var pulpCmd = &cobra.Command{
-	Use:   "pulp-binaries",
-	Short: "Check all binaries are present on pulp",
+var binariesCmd = &cobra.Command{
+	Use:   "binaries",
+	Short: "Check all binaries are present in the right place",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(binaries) == 0 {
 			return errors.New("need to specific at least one binary")
 		}
 		var merr *multierror.Error
-		_, name := github.SplitRepo(config.repo)
+		org, name := github.SplitRepo(config.repo)
+		tmpl, err := template.New("").Parse(urlTemplate)
+		if err != nil {
+			return err
+		}
 		for _, binary := range binaries {
-			u, err := url.JoinPath(pulpUrl, fmt.Sprintf("/%s-%s-%s.tar.gz", name, config.release, binary))
+			buf := bytes.NewBuffer(nil)
+			err := tmpl.Execute(buf, struct {
+				Org     string
+				Repo    string
+				Binary  string
+				Release string
+			}{
+				Org: org, Repo: name, Binary: binary, Release: config.release,
+			})
+			if err != nil {
+				return err
+			}
+			u := buf.String()
 			if err != nil {
 				merr = multierror.Append(merr, fmt.Errorf("couldn't join url path: %w", err))
 				continue
@@ -192,9 +209,9 @@ var releaseCmd = &cobra.Command{
 }
 
 var (
-	binaries  []string
-	pulpUrl   string
-	chartRepo string
+	binaries    []string
+	chartRepo   string
+	urlTemplate string
 )
 
 func init() {
@@ -204,10 +221,10 @@ func init() {
 	helmChartCmd.Flags().StringVar(&config.repo, "repo", "kumahq/kuma", "The repository to query")
 	helmChartCmd.Flags().StringVar(&config.release, "release", "", "The name of the release to publish")
 
-	pulpCmd.Flags().StringVar(&config.repo, "repo", "kumahq/kuma", "The repository to query")
-	pulpCmd.Flags().StringVar(&config.release, "release", "", "The name of the release to publish")
-	pulpCmd.Flags().StringSliceVar(&binaries, "binaries", binaries, "A comma separated list of targets (.e.g: centos-amd64,darwin-arm64)")
-	pulpCmd.Flags().StringVar(&pulpUrl, "base-url", "https://download.konghq.com/mesh-alpine/", "The url where releases are published")
+	binariesCmd.Flags().StringVar(&config.repo, "repo", "kumahq/kuma", "The repository to query")
+	binariesCmd.Flags().StringVar(&config.release, "release", "", "The name of the release to publish")
+	binariesCmd.Flags().StringSliceVar(&binaries, "binaries", binaries, "A comma separated list of targets (.e.g: centos-amd64,darwin-arm64)")
+	binariesCmd.Flags().StringVar(&urlTemplate, "url-template", "https://packages.konghq.com/public/{{.Repo}}-binaries-release/raw/names/{{.Repo}}-{{.Binary}}/versions/{{.Release}}/{{.Repo}}-{{.Release}}-{{.Binary}}.tar.gz", "A template to use for the binary")
 
 	dockerCmd.Flags().StringVar(&config.repo, "repo", "kumahq/kuma", "The repository to query")
 	dockerCmd.Flags().StringVar(&config.release, "release", "", "The name of the release to publish")
@@ -216,6 +233,6 @@ func init() {
 
 	releaseCmd.AddCommand(githubReleaseChangelogCmd)
 	releaseCmd.AddCommand(helmChartCmd)
-	releaseCmd.AddCommand(pulpCmd)
+	releaseCmd.AddCommand(binariesCmd)
 	releaseCmd.AddCommand(dockerCmd)
 }
