@@ -35,7 +35,8 @@ type GQLRepo struct {
 }
 
 type GQLObjectRelease struct {
-	Nodes []GQLRelease `json:"nodes"`
+	Nodes    []GQLRelease `json:"nodes"`
+	PageInfo GQLPageInfo  `json:"pageInfo"`
 }
 
 type GQLRelease struct {
@@ -148,10 +149,20 @@ func GqlClientFromEnv() *GQLClient {
 
 func (c GQLClient) ReleaseGraphQL(repo string) ([]GQLRelease, error) {
 	owner, name := SplitRepo(repo)
-	res, err := c.graphqlQuery(`
+	var all []GQLRelease
+	var res GQLOutput
+	var err error
+
+	for {
+		cursorStr := ""
+		if res.Data.Repository.Releases.PageInfo.EndCursor != "" {
+			cursorStr = fmt.Sprintf(`after: "%s",`, res.Data.Repository.Releases.PageInfo.EndCursor)
+		}
+
+		query := fmt.Sprintf(`
 query($name: String!, $owner: String!) {
   repository(owner: $owner, name: $name) {
-    releases(first: 100, orderBy: {field: CREATED_AT, direction: DESC}) {
+    releases(first: 100, %s orderBy: {field: CREATED_AT, direction: DESC}) {
       nodes {
         name
         createdAt
@@ -162,14 +173,28 @@ query($name: String!, $owner: String!) {
         databaseId
         isLatest
       }
+      pageInfo {
+        endCursor
+        hasNextPage
+        hasPreviousPage
+      }
     }
   }
 }
-`, map[string]interface{}{"owner": owner, "name": name})
-	if err != nil {
-		return nil, err
+`, cursorStr)
+		res, err = c.graphqlQuery(query, map[string]interface{}{"owner": owner, "name": name})
+		if err != nil {
+			return nil, err
+		}
+
+		all = append(all, res.Data.Repository.Releases.Nodes...)
+
+		if !res.Data.Repository.Releases.PageInfo.HasNextPage {
+			break
+		}
 	}
-	return res.Data.Repository.Releases.Nodes, nil
+
+	return all, nil
 }
 
 func (c GQLClient) HistoryGraphQl(repo, branch, commitLimit string) ([]GQLCommit, error) {
