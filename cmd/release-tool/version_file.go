@@ -21,7 +21,6 @@ var (
 	edition           string
 	minVersion        string
 	activeBranches    bool
-	useLabelForDev    bool
 )
 
 var versionFile = &cobra.Command{
@@ -62,14 +61,11 @@ var versionFile = &cobra.Command{
 		})
 		// Add the dev version
 		devVersion := versionfile.VersionEntry{
-			Release: "dev",
 			Edition: edition,
 			Version: "preview",
 			Branch:  "master",
-		}
-		if useLabelForDev {
-			devVersion.Label = "dev"
-			devVersion.Release = regexp.MustCompile(`\.[0-9]+$`).ReplaceAllString(semver.MustParse(out[len(out)-1].Version).IncMinor().String(), ".x")
+			Label:   "dev",
+			Release: regexp.MustCompile(`\.[0-9]+$`).ReplaceAllString(semver.MustParse(out[len(out)-1].Version).IncMinor().String(), ".x"),
 		}
 		out = append(out, devVersion)
 		if activeBranches {
@@ -93,5 +89,4 @@ func init() {
 	versionFile.Flags().IntVar(&ltsLifetimeMonths, "lts-lifetime-months", 24, "the number of months an lts version is valid for")
 	versionFile.Flags().StringVar(&minVersion, "min-version", "1.2.0", "The minimum version to build a version files on")
 	versionFile.Flags().BoolVar(&activeBranches, "active-branches", false, "only output a json with the branches not EOL")
-	versionFile.Flags().BoolVar(&useLabelForDev, "use-label-for-dev", false, "For the master branch infer a version")
 }
