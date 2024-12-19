@@ -100,10 +100,12 @@ type GQLAuthor struct {
 }
 
 type GQLPRNode struct {
-	Author GQLAuthor `json:"author"`
-	Number int       `json:"number"`
-	Title  string    `json:"title"`
-	Body   string    `json:"body"`
+	Author      GQLAuthor `json:"author"`
+	Number      int       `json:"number"`
+	Title       string    `json:"title"`
+	Body        string    `json:"body"`
+	Merged      bool      `json:"merged"`
+	MergeCommit GQLCommit `json:"mergeCommit"`
 }
 
 type GQLRef struct {
@@ -112,8 +114,8 @@ type GQLRef struct {
 
 type GQLCommit struct {
 	Oid                    string           `json:"oid"`
-	Message                string           `json:"message"`
-	AssociatedPullRequests GQLAssociatedPRs `json:"associatedPullRequests"`
+	Message                string           `json:"message,omitempty"`
+	AssociatedPullRequests GQLAssociatedPRs `json:"associatedPullRequests,omitempty"`
 }
 
 type GQLRefTarget struct {
@@ -220,7 +222,7 @@ query($name: String!, $owner: String!, $branch: String!) {
           nodes {
             oid
             message
-            associatedPullRequests(first: 1) {
+            associatedPullRequests(first: 100) {
               nodes {
                 author {
                   login
@@ -228,6 +230,10 @@ query($name: String!, $owner: String!, $branch: String!) {
                 number
                 title
                 body
+                merged
+                mergeCommit {
+                  oid
+                }
               }
             }
           }
