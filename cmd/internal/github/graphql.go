@@ -104,6 +104,7 @@ type GQLPRNode struct {
 	Number int       `json:"number"`
 	Title  string    `json:"title"`
 	Body   string    `json:"body"`
+	Merged bool      `json:"merged"`
 }
 
 type GQLRef struct {
@@ -220,7 +221,7 @@ query($name: String!, $owner: String!, $branch: String!) {
           nodes {
             oid
             message
-            associatedPullRequests(first: 1) {
+            associatedPullRequests(first: 100) {
               nodes {
                 author {
                   login
@@ -228,6 +229,7 @@ query($name: String!, $owner: String!, $branch: String!) {
                 number
                 title
                 body
+                merged
               }
             }
           }
