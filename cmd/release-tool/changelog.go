@@ -118,7 +118,13 @@ func getChangelog(gqlClient *github.GQLClient, repo string, branch string, tag s
 	}
 	var commitInfos []changeloggenerator.CommitInfo
 	for _, commit := range res {
-		pr := getCommitPR(&commit)
+		var pr *github.GQLPRNode
+		for _, prNode := range commit.AssociatedPullRequests.Nodes {
+			if prNode.Merged && prNode.MergeCommit.Oid == commit.Oid {
+				pr = &prNode
+				break
+			}
+		}
 		if pr == nil {
 			continue
 		}
@@ -133,20 +139,6 @@ func getChangelog(gqlClient *github.GQLClient, repo string, branch string, tag s
 		commitInfos = append(commitInfos, ci)
 	}
 	return changeloggenerator.New(config.repo, commitInfos)
-}
-
-func getCommitPR(commit *github.GQLCommit) *github.GQLPRNode {
-	if len(commit.AssociatedPullRequests.Nodes) == 0 {
-		return nil
-	}
-
-	for _, prNode := range commit.AssociatedPullRequests.Nodes {
-		if prNode.Merged && strings.Contains(commit.Message, fmt.Sprintf("(#%d)", prNode.Number)) {
-			return &prNode
-		}
-	}
-
-	return nil
 }
 
 func init() {
