@@ -118,10 +118,16 @@ func getChangelog(gqlClient *github.GQLClient, repo string, branch string, tag s
 	}
 	var commitInfos []changeloggenerator.CommitInfo
 	for _, commit := range res {
-		if len(commit.AssociatedPullRequests.Nodes) == 0 {
+		var pr *github.GQLPRNode
+		for _, prNode := range commit.AssociatedPullRequests.Nodes {
+			if prNode.Merged && prNode.MergeCommit.Oid == commit.Oid {
+				pr = &prNode
+				break
+			}
+		}
+		if pr == nil {
 			continue
 		}
-		pr := commit.AssociatedPullRequests.Nodes[0]
 		ci := changeloggenerator.CommitInfo{
 			Author:        pr.Author.Login,
 			Sha:           commit.Oid,
