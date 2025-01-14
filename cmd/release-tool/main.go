@@ -25,11 +25,12 @@ func main() {
 var config Config
 
 type Config struct {
-	branch  string
-	repo    string
-	fromTag string
-	format  string
-	release string
+	branch    string
+	repo      string
+	childRepo string
+	fromTag   string
+	format    string
+	release   string
 }
 
 var rootCmd = &cobra.Command{
