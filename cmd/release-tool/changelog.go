@@ -63,8 +63,9 @@ var autoChangelog = &cobra.Command{
 			}
 			if strings.Contains(release.Description, "## Changelog") {
 				changelog := strings.SplitN(release.Description, "## Changelog", 2)[1]
-				if childChangelog, found := getChildChangelog(release, childReleases); found {
-					changelog += childChangelog
+				if childRelease, found := childReleases[release.Name]; found && childRelease.IsReleased() && strings.Contains(release.Description, "## Changelog") {
+					changelog += fmt.Sprintf("\n### Includes [%s@%s](https://github.com/%s/releases/tag/%s) changelog", config.childRepo, childRelease.Name, config.childRepo, childRelease.Name)
+					changelog += strings.SplitN(childRelease.Description, "## Changelog", 2)[1]
 				}
 				_, _ = cmd.OutOrStdout().Write([]byte(fmt.Sprintf(`
 ## %s
@@ -75,14 +76,6 @@ var autoChangelog = &cobra.Command{
 		}
 		return nil
 	},
-}
-
-func getChildChangelog(release github.GQLRelease, childReleases map[string]github.GQLRelease) (string, bool) {
-	childRelease, found := childReleases[release.Name]
-	if !found || !childRelease.IsReleased() || !strings.Contains(release.Description, "## Changelog") { // If the release is not an actual release don't add in changelog.md
-		return "", false
-	}
-	return strings.SplitN(childRelease.Description, "## Changelog", 2)[1], true
 }
 
 var versionChangelog = &cobra.Command{
