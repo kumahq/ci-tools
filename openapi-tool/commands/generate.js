@@ -58,6 +58,7 @@ exports.generateFiles = async (argv) => {
                 delete spec.components.schemas.schema
             }
             deepReplace(spec, "$ref", "#/components/schemas/schema", `#/components/schemas/${name}Item`)
+            spec.info['x-ref-schema-name'] = undefined
         }
         return spec
     }))).filter((n) => n !== null);
