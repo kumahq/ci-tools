@@ -102,7 +102,7 @@ func (ci *CommitInfo) normalize() bool {
 		if strings.HasPrefix(l, "<!--") {
 			inComment = true
 		}
-		if inComment && strings.HasPrefix(l, "-->") {
+		if inComment && strings.HasSuffix(l, "-->") {
 			inComment = false
 		}
 		if !inComment && strings.HasPrefix(l, "> Changelog: ") {
