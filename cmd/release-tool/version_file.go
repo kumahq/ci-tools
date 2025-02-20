@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/Masterminds/semver/v3"
@@ -15,12 +16,15 @@ import (
 	"github.com/kumahq/ci-tools/cmd/internal/versionfile"
 )
 
+var releaseBranchPattern = regexp.MustCompile("^release-[0-9]+\\.[0-9]+$")
+
 var (
 	lifetimeMonths    int
 	ltsLifetimeMonths int
 	edition           string
 	minVersion        string
 	activeBranches    bool
+	branch            string
 )
 
 var versionFile = &cobra.Command{
@@ -30,11 +34,20 @@ var versionFile = &cobra.Command{
 	We use metadata from github to generate the versions file
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if branch != "master" && branch != "main" && !releaseBranchPattern.Match([]byte(branch)) {
+			return fmt.Errorf("provided branch name is incorrect: %s", branch)
+		}
 		gqlClient := github.GqlClientFromEnv()
 		res, err := gqlClient.ReleaseGraphQL(config.repo)
 		if err != nil {
 			return err
 		}
+		var maxVersionVer *semver.Version
+		if branch != "master" && branch != "main"{
+			releaseBranch := strings.Split(branch, "-")
+			maxVersionVer = semver.MustParse(releaseBranch[1])
+		}
+
 		minVersionVer := semver.MustParse(minVersion)
 		byVersion := map[string][]github.GQLRelease{}
 		for i := range res {
@@ -43,6 +56,9 @@ var versionFile = &cobra.Command{
 				continue // Ignore prereleases
 			}
 			if curVersion.LessThan(minVersionVer) {
+				continue
+			}
+			if maxVersionVer != nil && curVersion.GreaterThanEqual(maxVersionVer) {
 				continue
 			}
 			release := fmt.Sprintf("%d.%d.x", curVersion.Major(), curVersion.Minor())
@@ -89,4 +105,5 @@ func init() {
 	versionFile.Flags().IntVar(&ltsLifetimeMonths, "lts-lifetime-months", 24, "the number of months an lts version is valid for")
 	versionFile.Flags().StringVar(&minVersion, "min-version", "1.2.0", "The minimum version to build a version files on")
 	versionFile.Flags().BoolVar(&activeBranches, "active-branches", false, "only output a json with the branches not EOL")
+	versionFile.Flags().StringVar(&branch, "branch", "master", "The branch for which generate changelog")
 }
