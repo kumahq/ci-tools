@@ -37,7 +37,6 @@ var autoChangelog = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		println(branch)
 		var maxVersionVer *semver.Version
 		if config.branch != "master" && config.branch != "main" {
 			releaseBranch := strings.Split(config.branch, "-")
@@ -75,7 +74,6 @@ var autoChangelog = &cobra.Command{
 			if maxVersionVer != nil &&
 				(release.SemVer().Major() > maxVersionVer.Major() ||
 					(release.SemVer().Major() == maxVersionVer.Major() && release.SemVer().Minor() > maxVersionVer.Minor())) {
-				println(fmt.Sprintf("maxVersionVer %v, release %v", maxVersionVer, release))
 				continue
 			}
 			if !release.IsReleased() { // If the release is not an actual release don't add in changelog.md

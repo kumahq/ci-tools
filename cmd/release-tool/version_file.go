@@ -16,7 +16,7 @@ import (
 	"github.com/kumahq/ci-tools/cmd/internal/versionfile"
 )
 
-var releaseBranchPattern = regexp.MustCompile("^release-[0-9]+\\.[0-9]+$")
+var releaseBranchPattern = regexp.MustCompile(`^release-[0-9]+\.[0-9]+$`)
 
 var (
 	lifetimeMonths    int
@@ -43,7 +43,7 @@ var versionFile = &cobra.Command{
 			return err
 		}
 		var maxVersionVer *semver.Version
-		if branch != "master" && branch != "main"{
+		if branch != "master" && branch != "main" {
 			releaseBranch := strings.Split(branch, "-")
 			maxVersionVer = semver.MustParse(releaseBranch[1])
 		}
