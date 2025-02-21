@@ -22,12 +22,12 @@ jobs:
   # for more info. We have "Default to PR title for squash merge commits" enabled.
   commit-lint:
     name: "Check PR title"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
       - run: npm install -g @commitlint/cli @commitlint/config-conventional
       - name: "Check PR title"
         # Inject as env variable to escape properly
@@ -37,13 +37,16 @@ jobs:
           commitlint --config .github/commitlint.config.js --edit=<(echo "${TITLE}")
   check:
     name: "check"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
         with:
           go-version-file: go.mod
       - run: make check
-      - uses: golangci/golangci-lint-action@v6
+      - uses: golangci/golangci-lint-action@2226d7cb06a077cd73e56eedd38eecad18e5d837 # v6.5.0
+        with:
+          args: --verbose
+          verify: false # workaround https://github.com/golangci/golangci-lint-action/issues/1179
       - run: make test
       - run: make build
