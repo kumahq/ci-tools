@@ -16,34 +16,36 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
         with:
           go-version-file: go.mod
       - run: make check
-      - uses: golangci/golangci-lint-action@v6
+      - uses: golangci/golangci-lint-action@2226d7cb06a077cd73e56eedd38eecad18e5d837 # v6.5.0
         with:
           args: --verbose
+          verify: false # workaround https://github.com/golangci/golangci-lint-action/issues/1179
       - run: make test
       - run: make build
   build-ubuntu-netools:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: docker/setup-qemu-action@4574d27a4764455b42196d70a065bc6853246a25 # v3.4.0
+        with:
+          image: tonistiigi/binfmt:qemu-v7.0.0 # https://github.com/tonistiigi/binfmt/issues/240#issuecomment-2669052837
       - id: buildx
-        uses:
-          docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@f7ce87c1d6bead3e36075b2ce75da1f6cc28aaca # v3.9.0
       - if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5.6.1
         with:
           # list of Docker images to use as base name for tags
           images: ghcr.io/${{github.repository_owner}}/ubuntu-netools
@@ -56,7 +58,7 @@ jobs:
             type=ref,event=tag
             type=ref,event=pr
             type=sha
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@0adf9959216b96bec444f325f1e493d4aa344497 # v6.14.0
         with:
           context: docker
           platforms: linux/amd64,linux/arm64
@@ -65,21 +67,20 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           file: docker/ubuntu-netools.Dockerfile
   build-openapi-tool:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: docker/setup-qemu-action@4574d27a4764455b42196d70a065bc6853246a25 # v3.4.0
       - id: buildx
-        uses:
-          docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@f7ce87c1d6bead3e36075b2ce75da1f6cc28aaca # v3.9.0
       - if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5.6.1
         with:
           # list of Docker images to use as base name for tags
           images: ghcr.io/${{github.repository_owner}}/openapi-tool
@@ -92,7 +93,7 @@ jobs:
             type=ref,event=tag
             type=ref,event=pr
             type=sha
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@0adf9959216b96bec444f325f1e493d4aa344497 # v6.14.0
         with:
           context: openapi-tool
           platforms: linux/amd64,linux/arm64
