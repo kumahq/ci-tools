@@ -99,6 +99,7 @@ func (ci *CommitInfo) normalize() bool {
 	changelog := ""
 	inComment := false
 	for _, l := range strings.Split(ci.PrBody, "\n") {
+		l = strings.TrimSpace(l)
 		if strings.HasPrefix(l, "<!--") {
 			inComment = true
 		}
