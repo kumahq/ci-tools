@@ -41,7 +41,7 @@ var autoChangelog = &cobra.Command{
 				return false
 			}
 			// If they are released roughly at the same time we should sort them by semver order
-			if res[i].PublishedAt.Truncate(time.Hour*24) == res[j].PublishedAt.Truncate(time.Hour*24) {
+			if time.Time.Equal(res[i].PublishedAt.Truncate(time.Hour*24), res[j].PublishedAt.Truncate(time.Hour*24)) {
 				return !res[i].SemVer().LessThan(res[j].SemVer())
 			}
 			return res[i].PublishedAt.After(res[j].PublishedAt)
@@ -67,10 +67,10 @@ var autoChangelog = &cobra.Command{
 					changelog += fmt.Sprintf("\n### Includes [%s@%s](https://github.com/%s/releases/tag/%s) changelog", config.childRepo, childRelease.Name, config.childRepo, childRelease.Name)
 					changelog += strings.SplitN(childRelease.Description, "## Changelog", 2)[1]
 				}
-				_, _ = cmd.OutOrStdout().Write([]byte(fmt.Sprintf(`
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), `
 ## %s
 > Released on %s%s
-`, release.Name, release.PublishedAt.Format("2006/01/02"), changelog)))
+`, release.Name, release.PublishedAt.Format("2006/01/02"), changelog)
 			}
 
 		}
@@ -95,7 +95,7 @@ It will then output a changelog with all PRs with the same changelog grouped tog
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if config.fromTag == "" {
-			return errors.New("You must set either --from-tag")
+			return errors.New("you must set either --from-tag")
 		}
 		gqlClient := github.GqlClientFromEnv()
 		out, err := getChangelog(gqlClient, config.repo, config.branch, config.fromTag)

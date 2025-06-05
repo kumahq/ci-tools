@@ -38,7 +38,7 @@ var rootCmd = &cobra.Command{
 	Short: "Do a lot of possible release fun",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if config.repo == "" {
-			return errors.New("Must set a repo!")
+			return errors.New("must set a repo")
 		}
 		return nil
 	},

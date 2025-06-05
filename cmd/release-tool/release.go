@@ -150,7 +150,7 @@ var binariesCmd = &cobra.Command{
 			} else if r.StatusCode != 200 {
 				merr = multierror.Append(merr, fmt.Errorf("couldn't get %s: %d", u, r.StatusCode))
 			} else {
-				_, _ = cmd.OutOrStdout().Write([]byte(fmt.Sprintf("Found: %s\n", u)))
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Found: %s\n", u)
 			}
 			_ = r.Body.Close()
 		}
@@ -180,7 +180,7 @@ var (
 				} else if r.StatusCode != 200 {
 					merr = multierror.Append(merr, fmt.Errorf("failed with image: %s status: %d", img, r.StatusCode))
 				} else {
-					_, _ = cmd.OutOrStdout().Write([]byte(fmt.Sprintf("Got image: %s\n", img)))
+					_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Got image: %s\n", img)
 				}
 			}
 			return merr.ErrorOrNil()

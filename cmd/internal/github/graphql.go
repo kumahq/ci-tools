@@ -299,7 +299,9 @@ func (c GQLClient) graphqlQuery(query string, variables map[string]interface{}) 
 	if err != nil {
 		return out, err
 	}
-	defer res.Body.Close()
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(res.Body)
 	if res.StatusCode != 200 {
 		b, _ := io.ReadAll(res.Body)
 		err = fmt.Errorf("got status: %d body:%s", res.StatusCode, b)
