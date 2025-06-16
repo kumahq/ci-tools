@@ -45,7 +45,7 @@ var versionFile = &cobra.Command{
 			if curVersion.LessThan(minVersionVer) {
 				continue
 			}
-			release := fmt.Sprintf("%d.%d.x", curVersion.Major(), curVersion.Minor())
+			release := fmt.Sprintf("%d.%d", curVersion.Major(), curVersion.Minor())
 			byVersion[release] = append(byVersion[release], res[i])
 		}
 		var out []versionfile.VersionEntry
