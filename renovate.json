@@ -1,0 +1,15 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "Kong/public-shared-renovate:backend",
+    "kumahq/kuma//.renovate/security"
+  ],
+  "enabledManagers": [
+    "custom.regex",
+    "dockerfile",
+    "github-actions",
+    "gomod",
+    "npm"
+  ],
+  "ignorePaths": []
+}
