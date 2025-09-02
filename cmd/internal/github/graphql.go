@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/google/go-github/v50/github"
+	"github.com/google/go-github/v74/github"
 )
 
 type GQLOutput struct {
@@ -325,7 +325,7 @@ func (c GQLClient) UpsertRelease(ctx context.Context, repo string, release strin
 	}
 	owner, name := SplitRepo(repo)
 	if existingRelease == nil {
-		releasePayload := &github.RepositoryRelease{Name: &release, Draft: github.Bool(true), TagName: &release}
+		releasePayload := &github.RepositoryRelease{Name: &release, Draft: github.Ptr(true), TagName: &release}
 		err := contentModifier(releasePayload)
 		if err != nil {
 			return err
