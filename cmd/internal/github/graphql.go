@@ -325,7 +325,7 @@ func (c GQLClient) UpsertRelease(ctx context.Context, repo string, release strin
 	}
 	owner, name := SplitRepo(repo)
 	if existingRelease == nil {
-		releasePayload := &github.RepositoryRelease{Name: &release, Draft: github.Bool(true), TagName: &release}
+		releasePayload := &github.RepositoryRelease{Name: &release, Draft: github.Ptr(true), TagName: &release}
 		err := contentModifier(releasePayload)
 		if err != nil {
 			return err

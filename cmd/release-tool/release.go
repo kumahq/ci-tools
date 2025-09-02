@@ -78,7 +78,7 @@ TODO summary of some simple stuff.
 					return err
 				}
 			}
-			release.Body = github2.String(sbuilder.String())
+			release.Body = github2.Ptr(sbuilder.String())
 			return nil
 		})
 	},
