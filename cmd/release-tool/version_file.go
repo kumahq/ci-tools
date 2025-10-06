@@ -23,6 +23,10 @@ var (
 	activeBranches    bool
 )
 
+type ActiveBranches struct {
+	BaseBranchPatterns []string `json:"baseBranchPatterns"`
+}
+
 var versionFile = &cobra.Command{
 	Use:   "version-file",
 	Short: "Recreate the versions.yaml using github releases",
@@ -76,7 +80,7 @@ var versionFile = &cobra.Command{
 					branches = append(branches, v.Branch)
 				}
 			}
-			return json.NewEncoder(cmd.OutOrStdout()).Encode(branches)
+			return json.NewEncoder(cmd.OutOrStdout()).Encode(ActiveBranches{branches})
 		}
 		return yaml.NewEncoder(cmd.OutOrStdout()).Encode(out)
 	},
