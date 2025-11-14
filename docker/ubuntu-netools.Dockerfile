@@ -2,7 +2,7 @@ FROM ubuntu:24.04@sha256:e96e81f410a9f9cae717e6cdd88cc2a499700ff0bb5061876ad2437
 
 RUN apt update \
   && apt dist-upgrade -y \
-  && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     curl \
     dnsutils \
     iproute2 \
