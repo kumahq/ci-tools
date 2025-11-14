@@ -51,7 +51,13 @@ TODO summary of some simple stuff.
 		}
 
 		gqlClient := github.GqlClientFromEnv()
-		return gqlClient.UpsertRelease(cmd.Context(), config.repo, config.release, func(release *github2.RepositoryRelease) error {
+		// Ensure release name has v-prefix to match Git tag format
+		// Git tags use v-prefix (v2.11.8), so release names should match
+		releaseTag := config.release
+		if !strings.HasPrefix(releaseTag, "v") {
+			releaseTag = "v" + releaseTag
+		}
+		return gqlClient.UpsertRelease(cmd.Context(), config.repo, releaseTag, func(release *github2.RepositoryRelease) error {
 			if !release.GetDraft() {
 				return fmt.Errorf("release :%s has already published release notes, updating release-notes of released versions is not supported", release)
 			}
@@ -96,7 +102,10 @@ var helmChartCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		expectedName := fmt.Sprintf("%s-%s", strings.Split(config.repo, "/")[1], config.release)
+		// Strip v-prefix from release version to match helm chart naming convention
+		// Git tags use v-prefix (v2.11.8) but helm charts don't (kuma-2.11.8)
+		releaseVersion := strings.TrimPrefix(config.release, "v")
+		expectedName := fmt.Sprintf("%s-%s", strings.Split(config.repo, "/")[1], releaseVersion)
 		var release *github.GQLRelease
 		for _, r := range releases {
 			if r.Name == expectedName {
@@ -126,6 +135,8 @@ var binariesCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		// Strip v-prefix from release version to match binary naming convention
+		releaseVersion := strings.TrimPrefix(config.release, "v")
 		for _, binary := range binaries {
 			buf := bytes.NewBuffer(nil)
 			err := tmpl.Execute(buf, struct {
@@ -134,7 +145,7 @@ var binariesCmd = &cobra.Command{
 				Binary  string
 				Release string
 			}{
-				Org: org, Repo: name, Binary: binary, Release: config.release,
+				Org: org, Repo: name, Binary: binary, Release: releaseVersion,
 			})
 			if err != nil {
 				return err
@@ -171,10 +182,12 @@ var (
 			if dockerRepository == "" {
 				return errors.New("need to specify a docker repository")
 			}
+			// Strip v-prefix from release version to match Docker tag naming convention
+			releaseVersion := strings.TrimPrefix(config.release, "v")
 			var merr *multierror.Error
 			for _, i := range dockerImages {
-				img := fmt.Sprintf("%s/%s:%s", dockerRepository, i, config.release)
-				r, err := http.Head(fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/%s/tags/%s", dockerRepository, i, config.release))
+				img := fmt.Sprintf("%s/%s:%s", dockerRepository, i, releaseVersion)
+				r, err := http.Head(fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/%s/tags/%s", dockerRepository, i, releaseVersion))
 				if err != nil {
 					merr = multierror.Append(merr, fmt.Errorf("failed with image: %s %w", img, err))
 				} else if r.StatusCode != 200 {
