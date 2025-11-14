@@ -65,6 +65,6 @@ func BuildVersionEntry(edition string, releaseName string, lifetimeMonths int, l
 			latestRelease = releases[i]
 		}
 	}
-	out.Version = latestRelease.Name
+	out.Version = strings.TrimPrefix(latestRelease.Name, "v")
 	return out, nil
 }

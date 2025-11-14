@@ -88,6 +88,14 @@ func TestBuildVersionEntry(t *testing.T) {
 			},
 			versionfile.VersionEntry{Edition: "mesh", Version: "1.2.1", Release: "1.2.x", ReleaseDate: "2020-12-12", EndOfLifeDate: "2021-12-12", Branch: "release-1.2"},
 		),
+		simpleCase(
+			"strips v-prefix from release names",
+			[]github.GQLRelease{
+				{Name: "v1.2.0", PublishedAt: d1},
+				{Name: "v1.2.1", PublishedAt: d1.Add(time.Hour * 24 * 8), IsLatest: true},
+			},
+			versionfile.VersionEntry{Edition: "mesh", Version: "1.2.1", Release: "1.2.x", Latest: true, ReleaseDate: "2020-12-12", EndOfLifeDate: "2021-12-12", Branch: "release-1.2"},
+		),
 	} {
 		t.Run(v.desc, func(t *testing.T) {
 			res, err := versionfile.BuildVersionEntry(v.inEdition, v.inReleaseName, v.inLifetimeMonths, v.inLtsLifetimeMonths, v.inReleases)
