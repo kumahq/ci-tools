@@ -9,6 +9,7 @@ RUN apt update \
     iptables \
     ncat \
     net-tools \
+    openssl \
     openssh-server \
     rsync \
     strace \
@@ -17,6 +18,7 @@ RUN apt update \
     tmux \
     tzdata \
     vim \
+    wget \
   && apt clean \
   && rm -rf /var/lib/apt/lists/*
 
