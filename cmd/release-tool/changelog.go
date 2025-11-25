@@ -107,7 +107,8 @@ It will then output a changelog with all PRs with the same changelog grouped tog
 			return err
 		}
 
-		out, err := getChangelog(gqlClient, config.repo, config.branch, config.fromTag)
+		// Use warnOnNormalize=true since config.fromTag is user-provided
+		out, err := getChangelog(gqlClient, config.repo, config.branch, config.fromTag, true)
 		if err != nil {
 			return err
 		}
@@ -128,9 +129,14 @@ It will then output a changelog with all PRs with the same changelog grouped tog
 	},
 }
 
-func getChangelog(gqlClient *github.GQLClient, repo string, branch string, tag string) (changeloggenerator.Changelog, error) {
+func getChangelog(gqlClient *github.GQLClient, repo string, branch string, tag string, warnOnNormalize bool) (changeloggenerator.Changelog, error) {
 	// Normalize tag to ensure correct v-prefix based on kumahq/kuma conventions
-	normalizedTag := NormalizeVersionTag(tag)
+	var normalizedTag string
+	if warnOnNormalize {
+		normalizedTag = NormalizeVersionTagWithWarning(tag)
+	} else {
+		normalizedTag = NormalizeVersionTag(tag)
+	}
 
 	// Retrieve data from github
 	commit, err := gqlClient.CommitByRef(repo, normalizedTag)

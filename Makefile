@@ -9,13 +9,11 @@ build/release-tool:
 	mkdir -p build
 	go build -o build ./cmd/release-tool/...
 
-GOPATH?=$(shell go env GOPATH)
-
 .PHONY: check
 check:
 	go fmt ./...
 	go mod tidy
-	test -n "$$CI" || $(GOPATH)/bin/golangci-lint run -v
+	test -n "$$CI" || mise exec -- golangci-lint run -v
 
 .PHONY: test
 test:

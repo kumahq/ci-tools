@@ -63,12 +63,16 @@ TODO summary of some simple stuff.
 			return err
 		}
 
-		_, err = fmt.Fprintf(cmd.OutOrStdout(), "getting changelog from %s on repo %s and branch %s\n", prevVersion, config.repo, branch)
+		// Normalize the previous version tag for display and lookup
+		prevTag := NormalizeVersionTag(prevVersion.String())
+
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "getting changelog from %s on repo %s and branch %s\n", prevTag, config.repo, branch)
 		if err != nil {
 			return err
 		}
 
-		changelog, err := getChangelog(gqlClient, config.repo, branch, prevVersion.String())
+		// Use warnOnNormalize=false since prevVersion is auto-derived, not user-provided
+		changelog, err := getChangelog(gqlClient, config.repo, branch, prevTag, false)
 		if err != nil {
 			return err
 		}
@@ -112,13 +116,13 @@ TODO summary of some simple stuff.
 			return err
 		}
 
-		// Ensure release name has v-prefix to match Git tag format
-		releaseTag := config.release
-		if !strings.HasPrefix(releaseTag, "v") {
-			releaseTag = "v" + releaseTag
-		}
+		// Normalize release tag to match kumahq/kuma Git tag format
+		// Use WithWarning since config.release is user-provided
+		releaseTag := NormalizeVersionTagWithWarning(config.release)
+		// Release name should not have v prefix (just the version number)
+		releaseName := strings.TrimPrefix(releaseTag, "v")
 
-		return gqlClient.UpsertRelease(cmd.Context(), config.repo, releaseTag, func(release *github2.RepositoryRelease) error {
+		return gqlClient.UpsertRelease(cmd.Context(), config.repo, releaseName, releaseTag, func(release *github2.RepositoryRelease) error {
 			if !release.GetDraft() {
 				return fmt.Errorf("release :%s has already published release notes, updating release-notes of released versions is not supported", release)
 			}
@@ -130,6 +134,8 @@ TODO summary of some simple stuff.
 				return fmt.Errorf("release body exceeds GitHub limit: %d characters (max %d). Use --dry-run to preview the body and consider manually truncating", len(body), GitHubMaxBodySize)
 			}
 
+			// Normalize release name to not have v prefix (SLSA provenance may create releases with v prefix)
+			release.Name = github2.Ptr(releaseName)
 			release.Body = github2.Ptr(body)
 
 			return nil
