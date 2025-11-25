@@ -16,7 +16,15 @@ import (
 	"github.com/kumahq/ci-tools/cmd/internal/github"
 )
 
-var version *semver.Version
+const (
+	// GitHubMaxBodySize is the maximum allowed size for GitHub release body
+	GitHubMaxBodySize = 125000
+)
+
+var (
+	version *semver.Version
+	dryRun  bool
+)
 
 var githubReleaseChangelogCmd = &cobra.Command{
 	Use:   "changelog",
@@ -24,7 +32,7 @@ var githubReleaseChangelogCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		branch := fmt.Sprintf("release-%d.%d", version.Major(), version.Minor())
 		var prevVersion *semver.Version
-		if version.Major() == 0 && version.Minor() == 0 { // We're shipping a new minor, we need to find the
+		if version.Major() == 0 && version.Minor() == 0 {
 			return fmt.Errorf("script doesn't work with new major versions")
 		} else if version.Patch() == 0 {
 			prevVersion = semver.New(version.Major(), version.Minor()-1, 0, "", "")
@@ -55,8 +63,56 @@ TODO summary of some simple stuff.
 			return err
 		}
 
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "getting changelog from %s on repo %s and branch %s\n", prevVersion, config.repo, branch)
+		if err != nil {
+			return err
+		}
+
+		changelog, err := getChangelog(gqlClient, config.repo, branch, prevVersion.String())
+		if err != nil {
+			return err
+		}
+
+		// Build the release body
+		buildBody := func(existingBody *string) string {
+			sbuilder := &strings.Builder{}
+			if existingBody != nil {
+				header = strings.SplitN(*existingBody, "## Changelog", 2)[0] + "## Changelog\n\n"
+			}
+
+			sbuilder.WriteString(header)
+
+			for _, v := range changelog {
+				_, _ = fmt.Fprintf(sbuilder, "* %s\n", v)
+			}
+
+			return sbuilder.String()
+		}
+
+		// For dry-run, build and display the body without touching GitHub
+		if dryRun {
+			body := buildBody(nil)
+			bodyLen := len(body)
+
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "\n--- Release Body Preview (%d characters) ---\n", bodyLen)
+			_, _ = fmt.Fprint(cmd.OutOrStdout(), body)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "--- End Preview ---\n\n")
+
+			if bodyLen > GitHubMaxBodySize {
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "⚠️  WARNING: Body exceeds GitHub limit of %d characters by %d characters\n", GitHubMaxBodySize, bodyLen-GitHubMaxBodySize)
+			} else {
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "✅ Body size OK: %d/%d characters (%.1f%% of limit)\n", bodyLen, GitHubMaxBodySize, float64(bodyLen)/float64(GitHubMaxBodySize)*100)
+			}
+
+			return nil
+		}
+
+		if len(changelog) == 0 {
+			_, err := fmt.Fprintf(cmd.OutOrStdout(), "no changelog\n")
+			return err
+		}
+
 		// Ensure release name has v-prefix to match Git tag format
-		// Git tags use v-prefix (v2.11.8), so release names should match
 		releaseTag := config.release
 		if !strings.HasPrefix(releaseTag, "v") {
 			releaseTag = "v" + releaseTag
@@ -66,30 +122,16 @@ TODO summary of some simple stuff.
 			if !release.GetDraft() {
 				return fmt.Errorf("release :%s has already published release notes, updating release-notes of released versions is not supported", release)
 			}
-			sbuilder := &strings.Builder{}
-			if release.Body != nil {
-				header = strings.SplitN(release.GetBody(), "## Changelog", 2)[0] + "## Changelog\n\n"
+
+			body := buildBody(release.Body)
+
+			// Check body size and fail with helpful message if too large
+			if len(body) > GitHubMaxBodySize {
+				return fmt.Errorf("release body exceeds GitHub limit: %d characters (max %d). Use --dry-run to preview the body and consider manually truncating", len(body), GitHubMaxBodySize)
 			}
-			sbuilder.WriteString(header)
-			_, err := fmt.Fprintf(cmd.OutOrStdout(), "getting changelog from %s on repo %s and branch %s\n", prevVersion, config.repo, branch)
-			if err != nil {
-				return err
-			}
-			changelog, err := getChangelog(gqlClient, config.repo, branch, prevVersion.String())
-			if err != nil {
-				return err
-			}
-			if len(changelog) == 0 {
-				_, err := fmt.Fprintf(cmd.OutOrStdout(), "no changelog\n")
-				return err
-			}
-			for _, v := range changelog {
-				_, err = fmt.Fprintf(sbuilder, "* %s\n", v)
-				if err != nil {
-					return err
-				}
-			}
-			release.Body = github2.Ptr(sbuilder.String())
+
+			release.Body = github2.Ptr(body)
+
 			return nil
 		})
 	},
@@ -240,6 +282,7 @@ var (
 func init() {
 	githubReleaseChangelogCmd.Flags().StringVar(&config.release, "release", "", "The name of the release to publish")
 	githubReleaseChangelogCmd.Flags().StringVar(&config.repo, "repo", "kumahq/kuma", "The repository to query")
+	githubReleaseChangelogCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview the release body without updating GitHub")
 	helmChartCmd.Flags().StringVar(&chartRepo, "charts-repo", "", "The repository to query")
 	helmChartCmd.Flags().StringVar(&config.repo, "repo", "kumahq/kuma", "The repository to query")
 	helmChartCmd.Flags().StringVar(&config.release, "release", "", "The name of the release to publish")
