@@ -81,7 +81,7 @@ func TestNormalizeVersionTag(t *testing.T) {
 		input    string
 		expected string
 	}{
-		// Already has v prefix - unchanged
+		// Already has v prefix and needs it - unchanged
 		{"v2.12.4", "v2.12.4"},
 		{"v2.11.8", "v2.11.8"},
 		{"v3.0.0", "v3.0.0"},
@@ -103,8 +103,18 @@ func TestNormalizeVersionTag(t *testing.T) {
 		{"2.9.0", "2.9.0"},
 		{"2.8.5", "2.8.5"},
 
+		// Has v prefix but shouldn't - should be removed
+		{"v2.12.3", "2.12.3"},
+		{"v2.11.7", "2.11.7"},
+		{"v2.10.8", "2.10.8"},
+		{"v2.7.19", "2.7.19"},
+		{"v2.9.0", "2.9.0"},
+		{"v2.8.5", "2.8.5"},
+		{"v1.5.0", "1.5.0"},
+
 		// Invalid version - unchanged
 		{"invalid", "invalid"},
+		{"vinvalid", "vinvalid"},
 		{"", ""},
 	}
 

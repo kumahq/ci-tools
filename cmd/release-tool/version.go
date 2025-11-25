@@ -9,7 +9,7 @@ import (
 )
 
 // NormalizeVersionTag ensures the version tag has the correct format (with or without v prefix)
-// based on kumahq/kuma tagging conventions. Logs a warning if v prefix was auto-added.
+// based on kumahq/kuma tagging conventions. Logs a warning if v prefix was auto-added or removed.
 //
 // Tagging convention:
 //   - >= 2.13.x or >= 3.x: always v prefix
@@ -19,22 +19,27 @@ import (
 //   - 2.7.x: v prefix if patch >= 20
 //   - Other older versions: no v prefix
 func NormalizeVersionTag(tag string) string {
-	if strings.HasPrefix(tag, "v") {
-		return tag
-	}
+	hasPrefix := strings.HasPrefix(tag, "v")
+	cleanTag := strings.TrimPrefix(tag, "v")
 
-	v, err := semver.NewVersion(tag)
+	v, err := semver.NewVersion(cleanTag)
 	if err != nil {
 		return tag
 	}
 
 	if needsVPrefix(v) {
-		_, _ = fmt.Fprintf(os.Stderr, "Warning: auto-adding 'v' prefix to tag %s -> v%s (kumahq/kuma uses v-prefixed tags for this version)\n", tag, tag)
+		if !hasPrefix {
+			_, _ = fmt.Fprintf(os.Stderr, "Warning: auto-adding 'v' prefix to tag %s -> v%s (kumahq/kuma uses v-prefixed tags for this version)\n", tag, tag)
+		}
 
-		return "v" + tag
+		return "v" + cleanTag
 	}
 
-	return tag
+	if hasPrefix {
+		_, _ = fmt.Fprintf(os.Stderr, "Warning: auto-removing 'v' prefix from tag %s -> %s (kumahq/kuma uses non-prefixed tags for this version)\n", tag, cleanTag)
+	}
+
+	return cleanTag
 }
 
 // needsVPrefix determines if a version should have a v prefix based on kumahq/kuma conventions.

@@ -112,11 +112,8 @@ TODO summary of some simple stuff.
 			return err
 		}
 
-		// Ensure release name has v-prefix to match Git tag format
-		releaseTag := config.release
-		if !strings.HasPrefix(releaseTag, "v") {
-			releaseTag = "v" + releaseTag
-		}
+		// Normalize release tag to match kumahq/kuma Git tag format
+		releaseTag := NormalizeVersionTag(config.release)
 
 		return gqlClient.UpsertRelease(cmd.Context(), config.repo, releaseTag, func(release *github2.RepositoryRelease) error {
 			if !release.GetDraft() {
