@@ -129,8 +129,11 @@ It will then output a changelog with all PRs with the same changelog grouped tog
 }
 
 func getChangelog(gqlClient *github.GQLClient, repo string, branch string, tag string) (changeloggenerator.Changelog, error) {
+	// Normalize tag to ensure correct v-prefix based on kumahq/kuma conventions
+	normalizedTag := NormalizeVersionTag(tag)
+
 	// Retrieve data from github
-	commit, err := gqlClient.CommitByRef(repo, tag)
+	commit, err := gqlClient.CommitByRef(repo, normalizedTag)
 	if err != nil {
 		return nil, err
 	}
