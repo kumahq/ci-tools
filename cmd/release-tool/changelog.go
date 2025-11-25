@@ -28,7 +28,11 @@ var autoChangelog = &cobra.Command{
 	We use whatever is after '## Changelog' to build the changelog
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		gqlClient := github.GqlClientFromEnv()
+		gqlClient, err := github.NewGQLClient(config.useGHAuth)
+		if err != nil {
+			return err
+		}
+
 		res, err := gqlClient.ReleaseGraphQL(config.repo)
 		if err != nil {
 			return err
@@ -97,7 +101,12 @@ It will then output a changelog with all PRs with the same changelog grouped tog
 		if config.fromTag == "" {
 			return errors.New("you must set either --from-tag")
 		}
-		gqlClient := github.GqlClientFromEnv()
+
+		gqlClient, err := github.NewGQLClient(config.useGHAuth)
+		if err != nil {
+			return err
+		}
+
 		out, err := getChangelog(gqlClient, config.repo, config.branch, config.fromTag)
 		if err != nil {
 			return err

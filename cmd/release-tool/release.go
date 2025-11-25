@@ -50,13 +50,18 @@ TODO summary of some simple stuff.
 `
 		}
 
-		gqlClient := github.GqlClientFromEnv()
+		gqlClient, err := github.NewGQLClient(config.useGHAuth)
+		if err != nil {
+			return err
+		}
+
 		// Ensure release name has v-prefix to match Git tag format
 		// Git tags use v-prefix (v2.11.8), so release names should match
 		releaseTag := config.release
 		if !strings.HasPrefix(releaseTag, "v") {
 			releaseTag = "v" + releaseTag
 		}
+
 		return gqlClient.UpsertRelease(cmd.Context(), config.repo, releaseTag, func(release *github2.RepositoryRelease) error {
 			if !release.GetDraft() {
 				return fmt.Errorf("release :%s has already published release notes, updating release-notes of released versions is not supported", release)
@@ -97,7 +102,12 @@ var helmChartCmd = &cobra.Command{
 		if chartRepo == "" {
 			return errors.New("must set --charts-repo")
 		}
-		gqlClient := github.GqlClientFromEnv()
+
+		gqlClient, err := github.NewGQLClient(config.useGHAuth)
+		if err != nil {
+			return err
+		}
+
 		releases, err := gqlClient.ReleaseGraphQL(chartRepo)
 		if err != nil {
 			return err

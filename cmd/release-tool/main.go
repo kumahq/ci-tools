@@ -9,6 +9,8 @@ import (
 )
 
 func init() {
+	rootCmd.PersistentFlags().BoolVar(&config.useGHAuth, "use-gh-auth", false, "Use 'gh auth token' to get the GitHub authentication token")
+
 	rootCmd.AddCommand(versionChangelog)
 	rootCmd.AddCommand(releaseCmd)
 	rootCmd.AddCommand(autoChangelog)
@@ -31,6 +33,7 @@ type Config struct {
 	fromTag   string
 	format    string
 	release   string
+	useGHAuth bool
 }
 
 var rootCmd = &cobra.Command{
