@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -137,16 +136,17 @@ func SplitRepo(repo string) (string, string) {
 	return r[0], r[1]
 }
 
-func GqlClientFromEnv() *GQLClient {
-	token := os.Getenv("GITHUB_TOKEN")
-	if token == "" {
-		token = os.Getenv("GITHUB_API_TOKEN")
-		if token == "" {
-			panic("need to set at least env GITHUB_TOKEN or GITHUB_API_TOKEN")
-		}
+// NewGQLClient creates a new GitHub GraphQL client with flexible authentication.
+// Uses priority cascade: --use-gh-auth flag → GITHUB_TOKEN → GITHUB_API_TOKEN → GH_TOKEN → interactive prompt.
+func NewGQLClient(useGHAuth bool) (*GQLClient, error) {
+	token, err := getGitHubToken(useGHAuth)
+	if err != nil {
+		return nil, err
 	}
+
 	cl := github.NewTokenClient(context.Background(), token)
-	return &GQLClient{Token: token, Cl: cl}
+
+	return &GQLClient{Token: token, Cl: cl}, nil
 }
 
 func (c GQLClient) ReleaseGraphQL(repo string) ([]GQLRelease, error) {

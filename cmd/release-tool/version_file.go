@@ -34,7 +34,11 @@ var versionFile = &cobra.Command{
 	We use metadata from github to generate the versions file
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		gqlClient := github.GqlClientFromEnv()
+		gqlClient, err := github.NewGQLClient(config.useGHAuth)
+		if err != nil {
+			return err
+		}
+
 		res, err := gqlClient.ReleaseGraphQL(config.repo)
 		if err != nil {
 			return err
