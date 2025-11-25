@@ -4,7 +4,7 @@ go 1.25.1
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
-	github.com/google/go-github/v77 v77.0.0
+	github.com/google/go-github/v78 v78.0.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/spf13/cobra v1.10.1
 	golang.org/x/term v0.37.0
