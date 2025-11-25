@@ -68,7 +68,8 @@ TODO summary of some simple stuff.
 			return err
 		}
 
-		changelog, err := getChangelog(gqlClient, config.repo, branch, prevVersion.String())
+		// Use warnOnNormalize=false since prevVersion is auto-derived, not user-provided
+		changelog, err := getChangelog(gqlClient, config.repo, branch, prevVersion.String(), false)
 		if err != nil {
 			return err
 		}
@@ -113,7 +114,8 @@ TODO summary of some simple stuff.
 		}
 
 		// Normalize release tag to match kumahq/kuma Git tag format
-		releaseTag := NormalizeVersionTag(config.release)
+		// Use WithWarning since config.release is user-provided
+		releaseTag := NormalizeVersionTagWithWarning(config.release)
 		// Release name should not have v prefix (just the version number)
 		releaseName := strings.TrimPrefix(releaseTag, "v")
 
@@ -129,6 +131,8 @@ TODO summary of some simple stuff.
 				return fmt.Errorf("release body exceeds GitHub limit: %d characters (max %d). Use --dry-run to preview the body and consider manually truncating", len(body), GitHubMaxBodySize)
 			}
 
+			// Normalize release name to not have v prefix (SLSA provenance may create releases with v prefix)
+			release.Name = github2.Ptr(releaseName)
 			release.Body = github2.Ptr(body)
 
 			return nil
