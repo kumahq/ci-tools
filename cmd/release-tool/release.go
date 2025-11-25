@@ -63,13 +63,16 @@ TODO summary of some simple stuff.
 			return err
 		}
 
-		_, err = fmt.Fprintf(cmd.OutOrStdout(), "getting changelog from %s on repo %s and branch %s\n", prevVersion, config.repo, branch)
+		// Normalize the previous version tag for display and lookup
+		prevTag := NormalizeVersionTag(prevVersion.String())
+
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "getting changelog from %s on repo %s and branch %s\n", prevTag, config.repo, branch)
 		if err != nil {
 			return err
 		}
 
 		// Use warnOnNormalize=false since prevVersion is auto-derived, not user-provided
-		changelog, err := getChangelog(gqlClient, config.repo, branch, prevVersion.String(), false)
+		changelog, err := getChangelog(gqlClient, config.repo, branch, prevTag, false)
 		if err != nil {
 			return err
 		}
