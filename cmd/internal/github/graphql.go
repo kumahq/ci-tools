@@ -311,36 +311,57 @@ func (c GQLClient) graphqlQuery(query string, variables map[string]interface{}) 
 	return out, err
 }
 
-func (c GQLClient) UpsertRelease(ctx context.Context, repo string, release string, contentModifier func(repositoryRelease *github.RepositoryRelease) error) error {
+func (c GQLClient) UpsertRelease(
+	ctx context.Context,
+	repo string,
+	releaseName string,
+	tagName string,
+	contentModifier func(repositoryRelease *github.RepositoryRelease) error,
+) error {
 	releases, err := c.ReleaseGraphQL(repo)
 	if err != nil {
 		return err
 	}
+
 	var existingRelease *GQLRelease
+
 	for _, r := range releases {
-		if r.Name == release {
+		if r.Name == releaseName || r.Name == tagName {
 			existingRelease = &r
 			break
 		}
 	}
+
 	owner, name := SplitRepo(repo)
+
 	if existingRelease == nil {
-		releasePayload := &github.RepositoryRelease{Name: &release, Draft: github.Ptr(true), TagName: &release}
+		releasePayload := &github.RepositoryRelease{
+			Name:    &releaseName,
+			Draft:   github.Ptr(true),
+			TagName: &tagName,
+		}
+
 		err := contentModifier(releasePayload)
 		if err != nil {
 			return err
 		}
+
 		_, _, err = c.Cl.Repositories.CreateRelease(ctx, owner, name, releasePayload)
+
 		return err
 	}
+
 	releasePayload, _, err := c.Cl.Repositories.GetRelease(ctx, owner, name, int64(existingRelease.Id))
 	if err != nil {
 		return err
 	}
+
 	err = contentModifier(releasePayload)
 	if err != nil {
 		return err
 	}
+
 	_, _, err = c.Cl.Repositories.EditRelease(ctx, owner, name, int64(existingRelease.Id), releasePayload)
+
 	return err
 }

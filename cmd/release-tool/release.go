@@ -114,8 +114,10 @@ TODO summary of some simple stuff.
 
 		// Normalize release tag to match kumahq/kuma Git tag format
 		releaseTag := NormalizeVersionTag(config.release)
+		// Release name should not have v prefix (just the version number)
+		releaseName := strings.TrimPrefix(releaseTag, "v")
 
-		return gqlClient.UpsertRelease(cmd.Context(), config.repo, releaseTag, func(release *github2.RepositoryRelease) error {
+		return gqlClient.UpsertRelease(cmd.Context(), config.repo, releaseName, releaseTag, func(release *github2.RepositoryRelease) error {
 			if !release.GetDraft() {
 				return fmt.Errorf("release :%s has already published release notes, updating release-notes of released versions is not supported", release)
 			}
