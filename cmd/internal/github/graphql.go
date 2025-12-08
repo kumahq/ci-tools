@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/google/go-github/v78/github"
+	"github.com/google/go-github/v79/github"
 )
 
 type GQLOutput struct {
@@ -144,7 +144,7 @@ func NewGQLClient(useGHAuth bool) (*GQLClient, error) {
 		return nil, err
 	}
 
-	cl := github.NewTokenClient(context.Background(), token)
+	cl := github.NewClient(nil).WithAuthToken(token)
 
 	return &GQLClient{Token: token, Cl: cl}, nil
 }
