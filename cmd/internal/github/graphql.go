@@ -144,7 +144,7 @@ func NewGQLClient(useGHAuth bool) (*GQLClient, error) {
 		return nil, err
 	}
 
-	cl := github.NewTokenClient(context.Background(), token)
+	cl := github.NewClient(nil).WithAuthToken(token)
 
 	return &GQLClient{Token: token, Cl: cl}, nil
 }
