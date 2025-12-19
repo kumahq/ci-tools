@@ -13,6 +13,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/google/go-github/v79/github"
+	"golang.org/x/net/http2"
 )
 
 type GQLOutput struct {
@@ -147,15 +148,15 @@ func NewGQLClient(useGHAuth bool) (*GQLClient, error) {
 
 	cl := github.NewClient(nil).WithAuthToken(token)
 
-	// Configure HTTP client with appropriate timeouts for large GraphQL queries
-	// This prevents stream cancellation errors when fetching large changelogs
+	// Configure HTTP client with HTTP/2-specific timeouts for large GraphQL queries
+	// GitHub's GraphQL API uses HTTP/2, which requires http2.Transport for proper timeout handling
+	// ReadIdleTimeout prevents stream cancellation during long-running queries (500+ commits)
+	// by sending ping frames to keep the connection alive
 	httpClient := &http.Client{
 		Timeout: 5 * time.Minute,
-		Transport: &http.Transport{
-			ResponseHeaderTimeout: 2 * time.Minute,
-			ExpectContinueTimeout: 1 * time.Second,
-			// Increase idle connection timeout for long-running queries
-			IdleConnTimeout: 90 * time.Second,
+		Transport: &http2.Transport{
+			ReadIdleTimeout: 5 * time.Minute,
+			PingTimeout:     30 * time.Second,
 		},
 	}
 
