@@ -127,8 +127,9 @@ func (r GQLRefTarget) Commit() string {
 }
 
 type GQLClient struct {
-	Token string
-	Cl    *github.Client
+	Token      string
+	Cl         *github.Client
+	httpClient *http.Client
 }
 
 func SplitRepo(repo string) (string, string) {
@@ -146,7 +147,19 @@ func NewGQLClient(useGHAuth bool) (*GQLClient, error) {
 
 	cl := github.NewClient(nil).WithAuthToken(token)
 
-	return &GQLClient{Token: token, Cl: cl}, nil
+	// Configure HTTP client with appropriate timeouts for large GraphQL queries
+	// This prevents stream cancellation errors when fetching large changelogs
+	httpClient := &http.Client{
+		Timeout: 5 * time.Minute,
+		Transport: &http.Transport{
+			ResponseHeaderTimeout: 2 * time.Minute,
+			ExpectContinueTimeout: 1 * time.Second,
+			// Increase idle connection timeout for long-running queries
+			IdleConnTimeout: 90 * time.Second,
+		},
+	}
+
+	return &GQLClient{Token: token, Cl: cl, httpClient: httpClient}, nil
 }
 
 func (c GQLClient) ReleaseGraphQL(repo string) ([]GQLRelease, error) {
@@ -295,7 +308,7 @@ func (c GQLClient) graphqlQuery(query string, variables map[string]interface{}) 
 	r.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Token))
 	r.Header.Set("Content-Type", "application/json")
 	var res *http.Response
-	res, err = http.DefaultClient.Do(r)
+	res, err = c.httpClient.Do(r)
 	if err != nil {
 		return out, err
 	}
