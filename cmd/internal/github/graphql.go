@@ -221,7 +221,8 @@ func (c GQLClient) HistoryGraphQl(repo, branch, commitLimit string) ([]GQLCommit
 	for {
 		cursorStr := ""
 		if res.Data.Repository.Object.History.PageInfo.EndCursor != "" {
-			cursorStr = fmt.Sprintf(`(after: "%s")`, res.Data.Repository.Object.History.PageInfo.EndCursor)
+			// reduce to 50 as default 100 is too large now
+			cursorStr = fmt.Sprintf(`(first: 50, after: "%s")`, res.Data.Repository.Object.History.PageInfo.EndCursor)
 		}
 		res, err = c.graphqlQuery(fmt.Sprintf(`
 query($name: String!, $owner: String!, $branch: String!) {
