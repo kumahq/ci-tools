@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/google/go-github/v79/github"
+	"github.com/google/go-github/v81/github"
 	"golang.org/x/net/http2"
 )
 
