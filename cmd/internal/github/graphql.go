@@ -77,9 +77,9 @@ func (r GQLRelease) IsLTS() bool {
 }
 
 // ExtendedMonths returns the number of additional months this release's lifetime is extended by,
-// as specified by a `> Extended: N` line in the description. Returns 0 if not set.
+// as specified by a `> ExtensionMonths: N` line in the description. Returns 0 if not set.
 func (r GQLRelease) ExtendedMonths() int {
-	res := regexp.MustCompile(`(?m)^> Extended: ([0-9]+)`).FindStringSubmatch(r.Description)
+	res := regexp.MustCompile(`(?m)^> ExtensionMonths: ([0-9]+)`).FindStringSubmatch(r.Description)
 	if len(res) == 2 {
 		n, _ := strconv.Atoi(res[1])
 		return n
