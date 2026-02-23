@@ -102,7 +102,7 @@ func TestBuildVersionEntry(t *testing.T) {
 				{Name: "1.2.0", Description: "> Extended: 6", PublishedAt: d1},
 				{Name: "1.2.1", PublishedAt: d1.Add(time.Hour * 24 * 8), IsLatest: true},
 			},
-			versionfile.VersionEntry{Edition: "mesh", Version: "1.2.1", Release: "1.2.x", Latest: true, ReleaseDate: "2020-12-12", EndOfLifeDate: "2022-06-12", Branch: "release-1.2", ExtendedMonths: 6},
+			versionfile.VersionEntry{Edition: "mesh", Version: "1.2.1", Release: "1.2.x", Latest: true, ReleaseDate: "2020-12-12", EndOfLifeDate: "2022-06-12", Branch: "release-1.2", ExtensionMonths: 6},
 		),
 		simpleCase(
 			"extended combined with lts adds months on top of lts lifetime",
@@ -110,7 +110,7 @@ func TestBuildVersionEntry(t *testing.T) {
 				{Name: "1.2.0", Description: "> LTS\n> Extended: 6", PublishedAt: d1},
 				{Name: "1.2.1", PublishedAt: d1.Add(time.Hour * 48)},
 			},
-			versionfile.VersionEntry{Edition: "mesh", Version: "1.2.1", Release: "1.2.x", LTS: true, ReleaseDate: "2020-12-12", EndOfLifeDate: "2023-06-12", Branch: "release-1.2", ExtendedMonths: 6},
+			versionfile.VersionEntry{Edition: "mesh", Version: "1.2.1", Release: "1.2.x", LTS: true, ReleaseDate: "2020-12-12", EndOfLifeDate: "2023-06-12", Branch: "release-1.2", ExtensionMonths: 6},
 		),
 		simpleCase(
 			"extended on non-first release is ignored",

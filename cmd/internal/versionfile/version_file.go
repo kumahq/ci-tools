@@ -22,7 +22,7 @@ type VersionEntry struct {
 	Branch         string `yaml:"branch"`
 	Label          string `yaml:"label,omitempty"`
 	LTS            bool   `yaml:"lts,omitempty"`
-	ExtendedMonths int    `yaml:"extendedMonths,omitempty"`
+	ExtensionMonths int `yaml:"extensionMonths,omitempty"`
 }
 
 func (v VersionEntry) Less(o VersionEntry) bool {
@@ -53,7 +53,7 @@ func BuildVersionEntry(edition string, releaseName string, lifetimeMonths int, l
 		}
 		if ext := releases[0].ExtendedMonths(); ext > 0 {
 			lifetime += ext
-			out.ExtendedMonths = ext
+			out.ExtensionMonths = ext
 		}
 		releaseDate, err := releases[0].ExtractReleaseDate()
 		if err != nil {
