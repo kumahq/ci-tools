@@ -96,6 +96,30 @@ func TestBuildVersionEntry(t *testing.T) {
 			},
 			versionfile.VersionEntry{Edition: "mesh", Version: "1.2.1", Release: "1.2.x", Latest: true, ReleaseDate: "2020-12-12", EndOfLifeDate: "2021-12-12", Branch: "release-1.2"},
 		),
+		simpleCase(
+			"extended adds months on top of regular lifetime",
+			[]github.GQLRelease{
+				{Name: "1.2.0", Description: "> Extended: 6", PublishedAt: d1},
+				{Name: "1.2.1", PublishedAt: d1.Add(time.Hour * 24 * 8), IsLatest: true},
+			},
+			versionfile.VersionEntry{Edition: "mesh", Version: "1.2.1", Release: "1.2.x", Latest: true, ReleaseDate: "2020-12-12", EndOfLifeDate: "2022-06-12", Branch: "release-1.2", ExtendedMonths: 6},
+		),
+		simpleCase(
+			"extended combined with lts adds months on top of lts lifetime",
+			[]github.GQLRelease{
+				{Name: "1.2.0", Description: "> LTS\n> Extended: 6", PublishedAt: d1},
+				{Name: "1.2.1", PublishedAt: d1.Add(time.Hour * 48)},
+			},
+			versionfile.VersionEntry{Edition: "mesh", Version: "1.2.1", Release: "1.2.x", LTS: true, ReleaseDate: "2020-12-12", EndOfLifeDate: "2023-06-12", Branch: "release-1.2", ExtendedMonths: 6},
+		),
+		simpleCase(
+			"extended on non-first release is ignored",
+			[]github.GQLRelease{
+				{Name: "1.2.1", Description: "> Extended: 6", PublishedAt: d1.Add(time.Hour * 48)},
+				{Name: "1.2.0", Description: "foo", PublishedAt: d1},
+			},
+			versionfile.VersionEntry{Edition: "mesh", Version: "1.2.1", Release: "1.2.x", ReleaseDate: "2020-12-12", EndOfLifeDate: "2021-12-12", Branch: "release-1.2"},
+		),
 	} {
 		t.Run(v.desc, func(t *testing.T) {
 			res, err := versionfile.BuildVersionEntry(v.inEdition, v.inReleaseName, v.inLifetimeMonths, v.inLtsLifetimeMonths, v.inReleases)

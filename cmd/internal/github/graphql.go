@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -73,6 +74,17 @@ func (r GQLRelease) ExtractReleaseDate() (time.Time, error) {
 
 func (r GQLRelease) IsLTS() bool {
 	return regexp.MustCompile("^> LTS").MatchString(r.Description)
+}
+
+// ExtendedMonths returns the number of additional months this release's lifetime is extended by,
+// as specified by a `> Extended: N` line in the description. Returns 0 if not set.
+func (r GQLRelease) ExtendedMonths() int {
+	res := regexp.MustCompile(`(?m)^> Extended: ([0-9]+)`).FindStringSubmatch(r.Description)
+	if len(res) == 2 {
+		n, _ := strconv.Atoi(res[1])
+		return n
+	}
+	return 0
 }
 
 // Branch branch that this release was first on

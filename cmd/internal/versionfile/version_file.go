@@ -13,15 +13,16 @@ import (
 )
 
 type VersionEntry struct {
-	Edition       string `yaml:"edition"`
-	Version       string `yaml:"version"`
-	Release       string `yaml:"release"`
-	Latest        bool   `yaml:"latest,omitempty"`
-	ReleaseDate   string `yaml:"releaseDate,omitempty"`
-	EndOfLifeDate string `yaml:"endOfLifeDate,omitempty"`
-	Branch        string `yaml:"branch"`
-	Label         string `yaml:"label,omitempty"`
-	LTS           bool   `yaml:"lts,omitempty"`
+	Edition        string `yaml:"edition"`
+	Version        string `yaml:"version"`
+	Release        string `yaml:"release"`
+	Latest         bool   `yaml:"latest,omitempty"`
+	ReleaseDate    string `yaml:"releaseDate,omitempty"`
+	EndOfLifeDate  string `yaml:"endOfLifeDate,omitempty"`
+	Branch         string `yaml:"branch"`
+	Label          string `yaml:"label,omitempty"`
+	LTS            bool   `yaml:"lts,omitempty"`
+	ExtendedMonths int    `yaml:"extendedMonths,omitempty"`
 }
 
 func (v VersionEntry) Less(o VersionEntry) bool {
@@ -49,6 +50,10 @@ func BuildVersionEntry(edition string, releaseName string, lifetimeMonths int, l
 		if releases[0].IsLTS() {
 			out.LTS = true
 			lifetime = ltslifetimeMonths
+		}
+		if ext := releases[0].ExtendedMonths(); ext > 0 {
+			lifetime += ext
+			out.ExtendedMonths = ext
 		}
 		releaseDate, err := releases[0].ExtractReleaseDate()
 		if err != nil {
