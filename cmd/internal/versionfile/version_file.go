@@ -13,16 +13,16 @@ import (
 )
 
 type VersionEntry struct {
-	Edition        string `yaml:"edition"`
-	Version        string `yaml:"version"`
-	Release        string `yaml:"release"`
-	Latest         bool   `yaml:"latest,omitempty"`
-	ReleaseDate    string `yaml:"releaseDate,omitempty"`
-	EndOfLifeDate  string `yaml:"endOfLifeDate,omitempty"`
-	Branch         string `yaml:"branch"`
-	Label          string `yaml:"label,omitempty"`
-	LTS            bool   `yaml:"lts,omitempty"`
-	ExtensionMonths int `yaml:"extensionMonths,omitempty"`
+	Edition         string `yaml:"edition"`
+	Version         string `yaml:"version"`
+	Release         string `yaml:"release"`
+	Latest          bool   `yaml:"latest,omitempty"`
+	ReleaseDate     string `yaml:"releaseDate,omitempty"`
+	EndOfLifeDate   string `yaml:"endOfLifeDate,omitempty"`
+	Branch          string `yaml:"branch"`
+	Label           string `yaml:"label,omitempty"`
+	LTS             bool   `yaml:"lts,omitempty"`
+	ExtensionMonths int    `yaml:"extensionMonths,omitempty"`
 }
 
 func (v VersionEntry) Less(o VersionEntry) bool {
