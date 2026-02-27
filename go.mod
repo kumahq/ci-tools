@@ -7,7 +7,7 @@ require (
 	github.com/google/go-github/v82 v82.0.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/spf13/cobra v1.10.2
-	golang.org/x/net v0.50.0
+	golang.org/x/net v0.51.0
 	golang.org/x/term v0.40.0
 	gopkg.in/yaml.v3 v3.0.1
 )
