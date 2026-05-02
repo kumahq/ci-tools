@@ -9,7 +9,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/semver/v3"
-	github2 "github.com/google/go-github/v84/github"
+	github2 "github.com/google/go-github/v85/github"
 	"github.com/hashicorp/go-multierror"
 	"github.com/spf13/cobra"
 
