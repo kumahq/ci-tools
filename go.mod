@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
-	github.com/google/go-github/v84 v84.0.0
+	github.com/google/go-github/v87 v87.0.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/net v0.55.0
