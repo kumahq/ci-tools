@@ -284,6 +284,15 @@ query($name: String!, $owner: String!, $branch: String!) {
 	}
 }
 
+func (c GQLClient) MergeBase(ctx context.Context, repo, base, head string) (string, error) {
+	owner, name := SplitRepo(repo)
+	comparison, _, err := c.Cl.Repositories.CompareCommits(ctx, owner, name, base, head, nil)
+	if err != nil {
+		return "", err
+	}
+	return comparison.GetMergeBaseCommit().GetSHA(), nil
+}
+
 func (c GQLClient) CommitByRef(repo, tag string) (string, error) {
 	owner, name := SplitRepo(repo)
 	res, err := c.graphqlQuery(`

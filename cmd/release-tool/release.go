@@ -63,16 +63,38 @@ TODO summary of some simple stuff.
 			return err
 		}
 
-		// Normalize the previous version tag for display and lookup
 		prevTag := NormalizeVersionTag(prevVersion.String())
+
+		fromCommit, err := gqlClient.CommitByRef(config.repo, prevTag)
+		if err != nil {
+			return err
+		}
+
+		// For .0 releases, the prev tag lives on a sibling branch that may not be merged back
+		// into master. Detect this by checking if the tag commit is reachable from the current
+		// branch (merge-base of tag and branch equals the tag itself). If not, fall back to the
+		// merge-base of the two release branches as the cutoff.
+		if version.Patch() == 0 && fromCommit != "" {
+			mergeBase, err := gqlClient.MergeBase(cmd.Context(), config.repo, fromCommit, branch)
+			if err != nil {
+				return err
+			}
+			if mergeBase != fromCommit {
+				prevBranch := fmt.Sprintf("release-%d.%d", version.Major(), version.Minor()-1)
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "tag %s not reachable from %s, falling back to merge-base with %s\n", prevTag, branch, prevBranch)
+				fromCommit, err = gqlClient.MergeBase(cmd.Context(), config.repo, prevBranch, branch)
+				if err != nil {
+					return err
+				}
+			}
+		}
 
 		_, err = fmt.Fprintf(cmd.OutOrStdout(), "getting changelog from %s on repo %s and branch %s\n", prevTag, config.repo, branch)
 		if err != nil {
 			return err
 		}
 
-		// Use warnOnNormalize=false since prevVersion is auto-derived, not user-provided
-		changelog, err := getChangelog(gqlClient, config.repo, branch, prevTag, false)
+		changelog, err := getChangelog(gqlClient, config.repo, branch, fromCommit)
 		if err != nil {
 			return err
 		}
