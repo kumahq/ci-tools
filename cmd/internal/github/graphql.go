@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/google/go-github/v84/github"
+	"github.com/google/go-github/v88/github"
 	"golang.org/x/net/http2"
 )
 
@@ -158,7 +158,10 @@ func NewGQLClient(useGHAuth bool) (*GQLClient, error) {
 		return nil, err
 	}
 
-	cl := github.NewClient(nil).WithAuthToken(token)
+	cl, err := github.NewClient(github.WithAuthToken(token))
+	if err != nil {
+		return nil, err
+	}
 
 	// Configure HTTP client with HTTP/2-specific timeouts for large GraphQL queries
 	// GitHub's GraphQL API uses HTTP/2, which requires http2.Transport for proper timeout handling
