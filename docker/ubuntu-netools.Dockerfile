@@ -1,4 +1,4 @@
-FROM ubuntu:24.04@sha256:786a8b558f7be160c6c8c4a54f9a57274f3b4fb1491cf65146521ae77ff1dc54
+FROM ubuntu:26.04@sha256:f3d28607ddd78734bb7f71f117f3c6706c666b8b76cbff7c9ff6e5718d46ff64
 
 RUN apt update \
   && apt dist-upgrade -y \
@@ -25,7 +25,7 @@ RUN apt update \
 RUN ssh-keygen -A \
   && sed -i s/#PermitRootLogin.*/PermitRootLogin\ yes/ /etc/ssh/sshd_config \
   && sed -i s/#PermitEmptyPasswords.*/PermitEmptyPasswords\ yes/ /etc/ssh/sshd_config \
-  && mkdir /var/run/sshd \
+  && mkdir -p /var/run/sshd \
   && passwd -d root \
   && chmod a+rwx /root
 
