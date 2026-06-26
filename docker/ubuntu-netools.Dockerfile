@@ -25,7 +25,7 @@ RUN apt update \
 RUN ssh-keygen -A \
   && sed -i s/#PermitRootLogin.*/PermitRootLogin\ yes/ /etc/ssh/sshd_config \
   && sed -i s/#PermitEmptyPasswords.*/PermitEmptyPasswords\ yes/ /etc/ssh/sshd_config \
-  && mkdir /var/run/sshd \
+  && mkdir -p /var/run/sshd \
   && passwd -d root \
   && chmod a+rwx /root
 
