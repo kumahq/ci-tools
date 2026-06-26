@@ -8,7 +8,7 @@ on:
 
 jobs:
   pr-mgmt:
-    uses: kumahq/.github/.github/workflows/wfc_pr_management.yml@f8b89ff1817720691612fa145c5154f94585f344 # main
+    uses: kumahq/.github/.github/workflows/wfc_pr_management.yml@dcc5a536fe6c9afc101ea552b3c15ffeb26b01e9 # main
     with:
       approve: true
       merge: true
