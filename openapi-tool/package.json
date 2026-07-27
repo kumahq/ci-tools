@@ -16,7 +16,7 @@
     "@redocly/cli": "2.39.0",
     "@redocly/openapi-core": "2.39.0",
     "fast-glob": "3.3.3",
-    "js-yaml": "5.2.1",
+    "js-yaml": "5.2.2",
     "oas-toolkit": "0.17.0"
   }
 }
