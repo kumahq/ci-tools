@@ -375,8 +375,8 @@ func (c GQLClient) UpsertRelease(
 	if existingRelease == nil {
 		releasePayload := &github.RepositoryRelease{
 			Name:    &releaseName,
-			Draft:   github.Ptr(true),
-			TagName: &tagName,
+			Draft:   true,
+			TagName: tagName,
 		}
 
 		err := contentModifier(releasePayload)
@@ -384,7 +384,12 @@ func (c GQLClient) UpsertRelease(
 			return err
 		}
 
-		_, _, err = c.Cl.Repositories.CreateRelease(ctx, owner, name, releasePayload)
+		_, _, err = c.Cl.Repositories.CreateRelease(ctx, owner, name, github.CreateReleaseRequest{
+			TagName: releasePayload.TagName,
+			Name:    releasePayload.Name,
+			Body:    releasePayload.Body,
+			Draft:   github.Ptr(releasePayload.Draft),
+		})
 
 		return err
 	}
@@ -399,7 +404,12 @@ func (c GQLClient) UpsertRelease(
 		return err
 	}
 
-	_, _, err = c.Cl.Repositories.EditRelease(ctx, owner, name, int64(existingRelease.Id), releasePayload)
+	_, _, err = c.Cl.Repositories.UpdateRelease(ctx, owner, name, int64(existingRelease.Id), github.UpdateReleaseRequest{
+		TagName: &releasePayload.TagName,
+		Name:    releasePayload.Name,
+		Body:    releasePayload.Body,
+		Draft:   github.Ptr(releasePayload.Draft),
+	})
 
 	return err
 }
