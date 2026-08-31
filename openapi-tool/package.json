@@ -13,10 +13,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@redocly/cli": "2.44.1",
-    "@redocly/openapi-core": "2.44.1",
+    "@redocly/cli": "2.46.2",
+    "@redocly/openapi-core": "2.46.2",
     "fast-glob": "3.3.3",
-    "js-yaml": "5.2.3",
+    "js-yaml": "5.3.0",
     "oas-toolkit": "0.17.0"
   }
 }
