@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -42,6 +43,9 @@ var rootCmd = &cobra.Command{
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if config.repo == "" {
 			return errors.New("must set a repo")
+		}
+		if owner, name, ok := strings.Cut(config.repo, "/"); !ok || owner == "" || name == "" {
+			return fmt.Errorf("repo must be in the form owner/repo, got %q", config.repo)
 		}
 		return nil
 	},

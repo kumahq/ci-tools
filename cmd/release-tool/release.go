@@ -222,7 +222,7 @@ var helmChartCmd = &cobra.Command{
 		if release == nil {
 			return errors.New("couldn't find matching helm charts")
 		}
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Found helm chart release %s\n", expectedName)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Found helm chart release %s on GitHub\n", expectedName)
 		// TODO we could update the release with a link to artifactory
 
 		if chartsIndexURL == "" {
@@ -239,7 +239,7 @@ var helmChartCmd = &cobra.Command{
 				merr = multierror.Append(merr, err)
 				continue
 			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Found chart %s %s in %s index\n", chart, releaseVersion, chartsIndexURL)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Found chart %s %s in Helm repo index %s\n", chart, releaseVersion, chartsIndexURL)
 		}
 		return merr.ErrorOrNil()
 	},
@@ -328,8 +328,8 @@ var releaseCmd = &cobra.Command{
 	Use:   "release",
 	Short: "Do a lot of possible release fun",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		if config.repo == "" {
-			return errors.New("you must have a valid `--repo`")
+		if owner, name, ok := strings.Cut(config.repo, "/"); !ok || owner == "" || name == "" {
+			return fmt.Errorf("--repo must be in the form owner/repo, got %q", config.repo)
 		}
 		if config.release == "" {
 			return errors.New("you must set `--release`")
