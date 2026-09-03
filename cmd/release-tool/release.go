@@ -12,6 +12,7 @@ import (
 	github2 "github.com/google/go-github/v90/github"
 	"github.com/hashicorp/go-multierror"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/kumahq/ci-tools/cmd/internal/github"
 )
@@ -165,6 +166,61 @@ TODO summary of some simple stuff.
 	},
 }
 
+// helmIndexEntry is the subset of a Helm repo index.yaml chart entry we care about.
+// https://helm.sh/docs/topics/chart_repository/#the-index-file
+type helmIndexEntry struct {
+	Version string   `yaml:"version"`
+	URLs    []string `yaml:"urls"`
+}
+
+type helmIndex struct {
+	Entries map[string][]helmIndexEntry `yaml:"entries"`
+}
+
+// checkHelmIndex verifies a chart is both listed in the repo's index.yaml at the given
+// version and that its packaged tarball actually resolves. A GitHub release for the chart
+// (checked above) doesn't guarantee the index.yaml served from e.g. GitHub Pages has been
+// regenerated to include it, so `helm install` can fail even after the release exists.
+func checkHelmIndex(client *http.Client, indexURL, chart, version string) error {
+	req, err := http.NewRequest(http.MethodGet, strings.TrimSuffix(indexURL, "/")+"/index.yaml", nil)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("couldn't get %s/index.yaml: %w", indexURL, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("couldn't get %s/index.yaml: status %d", indexURL, resp.StatusCode)
+	}
+
+	var idx helmIndex
+	if err := yaml.NewDecoder(resp.Body).Decode(&idx); err != nil {
+		return fmt.Errorf("couldn't parse %s/index.yaml: %w", indexURL, err)
+	}
+
+	for _, entry := range idx.Entries[chart] {
+		if entry.Version != version {
+			continue
+		}
+		if len(entry.URLs) == 0 {
+			return fmt.Errorf("chart %s %s in %s/index.yaml has no urls", chart, version, indexURL)
+		}
+		chartURL := entry.URLs[0]
+		r, err := client.Head(chartURL)
+		if err != nil {
+			return fmt.Errorf("couldn't get %s: %w", chartURL, err)
+		}
+		_ = r.Body.Close()
+		if r.StatusCode != http.StatusOK {
+			return fmt.Errorf("couldn't get %s: status %d", chartURL, r.StatusCode)
+		}
+		return nil
+	}
+	return fmt.Errorf("chart %s %s not found in %s/index.yaml", chart, version, indexURL)
+}
+
 var helmChartCmd = &cobra.Command{
 	Use:   "helm-chart",
 	Short: "add a reference to the helm chart in the release notes",
@@ -185,7 +241,8 @@ var helmChartCmd = &cobra.Command{
 		// Strip v-prefix from release version to match helm chart naming convention
 		// Git tags use v-prefix (v2.11.8) but helm charts don't (kuma-2.11.8)
 		releaseVersion := strings.TrimPrefix(config.release, "v")
-		expectedName := fmt.Sprintf("%s-%s", strings.Split(config.repo, "/")[1], releaseVersion)
+		repoName := strings.Split(config.repo, "/")[1]
+		expectedName := fmt.Sprintf("%s-%s", repoName, releaseVersion)
 		var release *github.GQLRelease
 		for _, r := range releases {
 			if r.Name == expectedName {
@@ -196,9 +253,26 @@ var helmChartCmd = &cobra.Command{
 		if release == nil {
 			return errors.New("couldn't find matching helm charts")
 		}
-		_, _ = cmd.OutOrStdout().Write([]byte("Found helm chart"))
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Found helm chart release %s\n", expectedName)
 		// TODO we could update the release with a link to artifactory
-		return nil
+
+		if chartsIndexURL == "" {
+			return nil
+		}
+
+		charts := helmCharts
+		if len(charts) == 0 {
+			charts = []string{repoName}
+		}
+		var merr *multierror.Error
+		for _, chart := range charts {
+			if err := checkHelmIndex(http.DefaultClient, chartsIndexURL, chart, releaseVersion); err != nil {
+				merr = multierror.Append(merr, err)
+				continue
+			}
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Found chart %s %s in %s/index.yaml\n", chart, releaseVersion, chartsIndexURL)
+		}
+		return merr.ErrorOrNil()
 	},
 }
 
@@ -302,9 +376,11 @@ var releaseCmd = &cobra.Command{
 }
 
 var (
-	binaries    []string
-	chartRepo   string
-	urlTemplate string
+	binaries       []string
+	chartRepo      string
+	urlTemplate    string
+	chartsIndexURL string
+	helmCharts     []string
 )
 
 func init() {
@@ -314,6 +390,8 @@ func init() {
 	helmChartCmd.Flags().StringVar(&chartRepo, "charts-repo", "", "The repository to query")
 	helmChartCmd.Flags().StringVar(&config.repo, "repo", "kumahq/kuma", "The repository to query")
 	helmChartCmd.Flags().StringVar(&config.release, "release", "", "The name of the release to publish")
+	helmChartCmd.Flags().StringVar(&chartsIndexURL, "charts-index-url", "https://kumahq.github.io/charts", "The Helm chart repository index to verify the release against, empty to skip")
+	helmChartCmd.Flags().StringSliceVar(&helmCharts, "charts", helmCharts, "A comma separated list of chart names to verify in the index (defaults to the repo name, e.g. kuma)")
 
 	binariesCmd.Flags().StringVar(&config.repo, "repo", "kumahq/kuma", "The repository to query")
 	binariesCmd.Flags().StringVar(&config.release, "release", "", "The name of the release to publish")
