@@ -1,6 +1,8 @@
 package main
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -221,4 +223,96 @@ func TestReleaseTagNormalization(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCheckHelmIndex(t *testing.T) {
+	t.Run("chart resolves", func(t *testing.T) {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/kuma-2.14.4.tgz", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+		srv := httptest.NewServer(mux)
+		defer srv.Close()
+		mux.HandleFunc("/index.yaml", func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte(`
+apiVersion: v1
+entries:
+  kuma:
+  - name: kuma
+    version: 2.14.4
+    urls:
+    - ` + srv.URL + `/kuma-2.14.4.tgz
+`))
+		})
+
+		if err := checkHelmIndex(srv.URL, "kuma", "2.14.4"); err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+	})
+
+	t.Run("chart missing from index", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte("apiVersion: v1\nentries: {}\n"))
+		}))
+		defer srv.Close()
+
+		if err := checkHelmIndex(srv.URL, "kuma", "2.14.4"); err == nil {
+			t.Fatal("expected an error, got nil")
+		}
+	})
+
+	t.Run("version missing from index", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte(`
+apiVersion: v1
+entries:
+  kuma:
+  - name: kuma
+    version: 2.14.3
+    urls:
+    - https://example.invalid/kuma-2.14.3.tgz
+`))
+		}))
+		defer srv.Close()
+
+		if err := checkHelmIndex(srv.URL, "kuma", "2.14.4"); err == nil {
+			t.Fatal("expected an error, got nil")
+		}
+	})
+
+	t.Run("tarball does not resolve", func(t *testing.T) {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/kuma-2.14.4.tgz", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		})
+		srv := httptest.NewServer(mux)
+		defer srv.Close()
+		mux.HandleFunc("/index.yaml", func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte(`
+apiVersion: v1
+entries:
+  kuma:
+  - name: kuma
+    version: 2.14.4
+    urls:
+    - ` + srv.URL + `/kuma-2.14.4.tgz
+`))
+		})
+
+		err := checkHelmIndex(srv.URL, "kuma", "2.14.4")
+		if err == nil || !strings.Contains(err.Error(), "status 404") {
+			t.Fatalf("expected a status 404 error, got %v", err)
+		}
+	})
+
+	t.Run("index.yaml unreachable", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer srv.Close()
+
+		if err := checkHelmIndex(srv.URL, "kuma", "2.14.4"); err == nil {
+			t.Fatal("expected an error, got nil")
+		}
+	})
 }

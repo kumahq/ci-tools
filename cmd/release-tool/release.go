@@ -12,6 +12,8 @@ import (
 	github2 "github.com/google/go-github/v90/github"
 	"github.com/hashicorp/go-multierror"
 	"github.com/spf13/cobra"
+	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/repo"
 
 	"github.com/kumahq/ci-tools/cmd/internal/github"
 )
@@ -165,6 +167,29 @@ TODO summary of some simple stuff.
 	},
 }
 
+// checkHelmIndex verifies a chart is both listed in the repo's index.yaml at the given
+// version and that its packaged tarball actually resolves. A GitHub release for the chart
+// (checked above) doesn't guarantee the index.yaml served from e.g. GitHub Pages has been
+// regenerated to include it, so `helm install` can fail even after the release exists.
+// FindChartInRepoURL is the same helper `helm pull`/`helm search repo` resolve charts
+// with, so it inherits Helm's own index parsing, version matching, and relative-URL
+// resolution instead of us reimplementing it.
+func checkHelmIndex(repoURL, chart, version string) error {
+	chartURL, err := repo.FindChartInRepoURL(repoURL, chart, version, "", "", "", getter.Getters())
+	if err != nil {
+		return err
+	}
+	r, err := http.Head(chartURL)
+	if err != nil {
+		return fmt.Errorf("couldn't get %s: %w", chartURL, err)
+	}
+	_ = r.Body.Close()
+	if r.StatusCode != http.StatusOK {
+		return fmt.Errorf("couldn't get %s: status %d", chartURL, r.StatusCode)
+	}
+	return nil
+}
+
 var helmChartCmd = &cobra.Command{
 	Use:   "helm-chart",
 	Short: "add a reference to the helm chart in the release notes",
@@ -185,7 +210,8 @@ var helmChartCmd = &cobra.Command{
 		// Strip v-prefix from release version to match helm chart naming convention
 		// Git tags use v-prefix (v2.11.8) but helm charts don't (kuma-2.11.8)
 		releaseVersion := strings.TrimPrefix(config.release, "v")
-		expectedName := fmt.Sprintf("%s-%s", strings.Split(config.repo, "/")[1], releaseVersion)
+		repoName := strings.Split(config.repo, "/")[1]
+		expectedName := fmt.Sprintf("%s-%s", repoName, releaseVersion)
 		var release *github.GQLRelease
 		for _, r := range releases {
 			if r.Name == expectedName {
@@ -196,9 +222,26 @@ var helmChartCmd = &cobra.Command{
 		if release == nil {
 			return errors.New("couldn't find matching helm charts")
 		}
-		_, _ = cmd.OutOrStdout().Write([]byte("Found helm chart"))
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Found helm chart release %s\n", expectedName)
 		// TODO we could update the release with a link to artifactory
-		return nil
+
+		if chartsIndexURL == "" {
+			return nil
+		}
+
+		charts := helmCharts
+		if len(charts) == 0 {
+			charts = []string{repoName}
+		}
+		var merr *multierror.Error
+		for _, chart := range charts {
+			if err := checkHelmIndex(chartsIndexURL, chart, releaseVersion); err != nil {
+				merr = multierror.Append(merr, err)
+				continue
+			}
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Found chart %s %s in %s index\n", chart, releaseVersion, chartsIndexURL)
+		}
+		return merr.ErrorOrNil()
 	},
 }
 
@@ -302,9 +345,11 @@ var releaseCmd = &cobra.Command{
 }
 
 var (
-	binaries    []string
-	chartRepo   string
-	urlTemplate string
+	binaries       []string
+	chartRepo      string
+	urlTemplate    string
+	chartsIndexURL string
+	helmCharts     []string
 )
 
 func init() {
@@ -314,6 +359,8 @@ func init() {
 	helmChartCmd.Flags().StringVar(&chartRepo, "charts-repo", "", "The repository to query")
 	helmChartCmd.Flags().StringVar(&config.repo, "repo", "kumahq/kuma", "The repository to query")
 	helmChartCmd.Flags().StringVar(&config.release, "release", "", "The name of the release to publish")
+	helmChartCmd.Flags().StringVar(&chartsIndexURL, "charts-index-url", "https://kumahq.github.io/charts", "The Helm chart repository index to verify the release against, empty to skip")
+	helmChartCmd.Flags().StringSliceVar(&helmCharts, "charts", helmCharts, "A comma separated list of chart names to verify in the index (defaults to the repo name, e.g. kuma)")
 
 	binariesCmd.Flags().StringVar(&config.repo, "repo", "kumahq/kuma", "The repository to query")
 	binariesCmd.Flags().StringVar(&config.release, "release", "", "The name of the release to publish")
