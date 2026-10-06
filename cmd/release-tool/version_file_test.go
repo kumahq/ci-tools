@@ -142,6 +142,11 @@ func TestLatestReleasedVersion(t *testing.T) {
 			expected: "2.14.5",
 		},
 		{
+			name:     "prerelease tag published without the GitHub flag is ignored",
+			releases: []github.GQLRelease{{Name: "v2.14.5"}, {Name: "v3.0.0-rc1"}},
+			expected: "2.14.5",
+		},
+		{
 			name:     "no published releases",
 			releases: []github.GQLRelease{{Name: "v3.0.0", IsDraft: true}},
 			expected: "",
@@ -206,6 +211,12 @@ func TestNewestUnreleasedBranch(t *testing.T) {
 			latestReleased: "",
 			branches:       []string{"master", "release-3.0"},
 			expected:       "3.0.0",
+		},
+		{
+			name:           "branch version too large for semver is ignored",
+			latestReleased: "2.14.5",
+			branches:       []string{"release-99999999999999999999999.0", "master"},
+			expected:       "",
 		},
 		{
 			name:           "no branches at all",

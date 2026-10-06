@@ -148,6 +148,9 @@ func latestReleasedVersion(releases []github.GQLRelease) *semver.Version {
 			continue
 		}
 		v := releases[i].SemVer()
+		if v.Prerelease() != "" {
+			continue
+		}
 		if latest == nil || v.GreaterThan(latest) {
 			latest = v
 		}
@@ -165,7 +168,10 @@ func newestUnreleasedBranch(latestReleased *semver.Version, branches []string) *
 		if m == nil {
 			continue
 		}
-		v := semver.MustParse(m[1] + "." + m[2] + ".0")
+		v, err := semver.NewVersion(m[1] + "." + m[2] + ".0")
+		if err != nil {
+			continue
+		}
 		if latestReleased != nil && v.Compare(latestReleased) <= 0 {
 			continue
 		}
