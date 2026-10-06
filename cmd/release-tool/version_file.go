@@ -67,13 +67,22 @@ var versionFile = &cobra.Command{
 		sort.Slice(out, func(i, j int) bool {
 			return out[i].Less(out[j])
 		})
-		// Add the dev version
+		latestReleased := semver.MustParse(out[len(out)-1].Version)
+		branchNames, err := gqlClient.ReleaseBranches(cmd.Context(), config.repo)
+		if err != nil {
+			return err
+		}
+		unreleased := newestUnreleasedBranch(latestReleased, branchNames)
+		devRelease := regexp.MustCompile(`\.[0-9]+$`).ReplaceAllString(latestReleased.IncMinor().String(), ".x")
+		if unreleased != nil {
+			devRelease = branchPattern(unreleased)
+		}
 		devVersion := versionfile.VersionEntry{
 			Edition: edition,
 			Version: "preview",
 			Branch:  "master",
 			Label:   "dev",
-			Release: regexp.MustCompile(`\.[0-9]+$`).ReplaceAllString(semver.MustParse(out[len(out)-1].Version).IncMinor().String(), ".x"),
+			Release: devRelease,
 		}
 		out = append(out, devVersion)
 		if activeBranches {
@@ -84,10 +93,62 @@ var versionFile = &cobra.Command{
 					branches = append(branches, v.Branch)
 				}
 			}
+			if unreleased != nil {
+				branches = insertBeforeDefault(branches, branchName(unreleased))
+			}
 			return json.NewEncoder(cmd.OutOrStdout()).Encode(ActiveBranches{branches})
 		}
 		return yaml.NewEncoder(cmd.OutOrStdout()).Encode(out)
 	},
+}
+
+var releaseBranchRe = regexp.MustCompile(`^release-(\d+)\.(\d+)$`)
+
+// newestUnreleasedBranch returns the version of the newest release-X.Y branch
+// that is ahead of every published release line, or nil when no branch is
+// ahead (the normal state right after a release).
+func newestUnreleasedBranch(latestReleased *semver.Version, branches []string) *semver.Version {
+	var newest *semver.Version
+	for _, b := range branches {
+		m := releaseBranchRe.FindStringSubmatch(b)
+		if m == nil {
+			continue
+		}
+		v := semver.MustParse(m[1] + "." + m[2] + ".0")
+		if v.Compare(latestReleased) <= 0 {
+			continue
+		}
+		if newest == nil || v.GreaterThan(newest) {
+			newest = v
+		}
+	}
+	return newest
+}
+
+func branchPattern(v *semver.Version) string {
+	return fmt.Sprintf("%d.%d.x", v.Major(), v.Minor())
+}
+
+func branchName(v *semver.Version) string {
+	return fmt.Sprintf("release-%d.%d", v.Major(), v.Minor())
+}
+
+// insertBeforeDefault puts an unreleased branch before the default branch
+// ("master"), which is always last, so consumers see it during the release cycle.
+func insertBeforeDefault(branches []string, unreleased string) []string {
+	out := make([]string, 0, len(branches)+1)
+	inserted := false
+	for _, b := range branches {
+		if !inserted && b == "master" {
+			out = append(out, unreleased)
+			inserted = true
+		}
+		out = append(out, b)
+	}
+	if !inserted {
+		out = append(out, unreleased)
+	}
+	return out
 }
 
 func init() {
