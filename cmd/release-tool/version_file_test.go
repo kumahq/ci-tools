@@ -1,12 +1,114 @@
 package main
 
 import (
+	"slices"
 	"testing"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 
 	"github.com/kumahq/ci-tools/cmd/internal/github"
 )
+
+func TestAssembleVersions(t *testing.T) {
+	published := func(name string, daysAgo int) github.GQLRelease {
+		return github.GQLRelease{
+			Name:        name,
+			PublishedAt: time.Now().AddDate(0, 0, -daysAgo),
+		}
+	}
+
+	t.Run("no unreleased branch keeps latest+1 and no extra branch", func(t *testing.T) {
+		releases := []github.GQLRelease{published("v2.13.11", 300), published("v2.14.5", 30)}
+		out, branches, err := assembleVersions("kuma", "2.2.0", 12, 24, releases, []string{"master", "release-2.14"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		last := out[len(out)-1]
+		if last.Version != "preview" || last.Release != "2.15.x" || last.Branch != "master" {
+			t.Errorf("preview entry = %+v, want preview/2.15.x/master", last)
+		}
+		want := []string{"release-2.13", "release-2.14", "master"}
+		if !slices.Equal(branches, want) {
+			t.Errorf("branches = %v, want %v", branches, want)
+		}
+	})
+
+	t.Run("unreleased branch drives preview and active branches", func(t *testing.T) {
+		releases := []github.GQLRelease{published("v2.13.11", 300), published("v2.14.5", 30)}
+		out, branches, err := assembleVersions(
+			"kuma", "2.2.0", 12, 24,
+			releases, []string{"master", "release-2.14", "release-3.0"},
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		last := out[len(out)-1]
+		if last.Version != "preview" || last.Release != "3.0.x" {
+			t.Errorf("preview entry = %+v, want preview with release 3.0.x", last)
+		}
+		want := []string{"release-2.13", "release-2.14", "release-3.0", "master"}
+		if !slices.Equal(branches, want) {
+			t.Errorf("branches = %v, want %v", branches, want)
+		}
+	})
+
+	t.Run("draft for the unreleased line does not duplicate the branch", func(t *testing.T) {
+		releases := []github.GQLRelease{
+			published("v2.14.5", 30),
+			{Name: "v3.0.0", IsDraft: true},
+		}
+		out, branches, err := assembleVersions(
+			"kuma", "2.2.0", 12, 24,
+			releases, []string{"master", "release-2.14", "release-3.0"},
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, e := range out {
+			if e.Release == "3.0.x" && e.Version != "preview" {
+				t.Errorf("draft-only line leaked into entries: %+v", e)
+			}
+		}
+		count := 0
+		for _, b := range branches {
+			if b == "release-3.0" {
+				count++
+			}
+		}
+		if count != 1 {
+			t.Errorf("release-3.0 appears %d times in %v, want exactly once", count, branches)
+		}
+		last := out[len(out)-1]
+		if last.Version != "preview" || last.Release != "3.0.x" {
+			t.Errorf("preview entry = %+v, want preview with release 3.0.x", last)
+		}
+	})
+
+	t.Run("EOL branches are filtered from active branches", func(t *testing.T) {
+		releases := []github.GQLRelease{
+			published("v2.6.0", 1100),
+			published("v2.14.5", 30),
+		}
+		_, branches, err := assembleVersions(
+			"kuma", "2.2.0", 12, 24,
+			releases, []string{"master", "release-2.6", "release-2.14"},
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if slices.Contains(branches, "release-2.6") {
+			t.Errorf("EOL branch release-2.6 not filtered: %v", branches)
+		}
+	})
+
+	t.Run("no published releases errors", func(t *testing.T) {
+		releases := []github.GQLRelease{{Name: "v3.0.0", IsDraft: true}}
+		if _, _, err := assembleVersions("kuma", "2.2.0", 12, 24, releases, nil); err == nil {
+			t.Error("want error for draft-only releases, got nil")
+		}
+	})
+}
 
 func TestLatestReleasedVersion(t *testing.T) {
 	tests := []struct {

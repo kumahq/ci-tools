@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"slices"
 	"sort"
 	"time"
 
@@ -40,66 +41,88 @@ var versionFile = &cobra.Command{
 			return err
 		}
 
-		res, err := gqlClient.ReleaseGraphQL(config.repo)
+		releases, err := gqlClient.ReleaseGraphQL(config.repo)
 		if err != nil {
 			return err
 		}
-		minVersionVer := semver.MustParse(minVersion)
-		byVersion := map[string][]github.GQLRelease{}
-		for i := range res {
-			curVersion := res[i].SemVer()
-			if curVersion.Prerelease() != "" {
-				continue // Ignore prereleases
-			}
-			if curVersion.LessThan(minVersionVer) {
-				continue
-			}
-			release := fmt.Sprintf("%d.%d.x", curVersion.Major(), curVersion.Minor())
-			byVersion[release] = append(byVersion[release], res[i])
+
+		out, branches, err := assembleVersions(
+			edition, minVersion, lifetimeMonths, ltsLifetimeMonths,
+			releases, releaseBranchNames(cmd.Context(), gqlClient, config.repo),
+		)
+		if err != nil {
+			return err
 		}
-		var out []versionfile.VersionEntry
-		for releaseName, releases := range byVersion {
-			res, err := versionfile.BuildVersionEntry(edition, releaseName, lifetimeMonths, ltsLifetimeMonths, releases)
-			if err != nil {
-				return err
-			}
-			out = append(out, res)
-		}
-		sort.Slice(out, func(i, j int) bool {
-			return out[i].Less(out[j])
-		})
-		latestReleased := latestReleasedVersion(res)
-		if latestReleased == nil {
-			latestReleased = semver.MustParse(out[len(out)-1].Version)
-		}
-		unreleased := newestUnreleasedBranch(latestReleased, releaseBranchNames(cmd.Context(), gqlClient, config.repo))
-		devRelease := regexp.MustCompile(`\.[0-9]+$`).ReplaceAllString(latestReleased.IncMinor().String(), ".x")
-		if unreleased != nil {
-			devRelease = branchPattern(unreleased)
-		}
-		devVersion := versionfile.VersionEntry{
-			Edition: edition,
-			Version: "preview",
-			Branch:  "master",
-			Label:   "dev",
-			Release: devRelease,
-		}
-		out = append(out, devVersion)
+
 		if activeBranches {
-			var branches []string
-			for _, v := range out {
-				t, _ := time.Parse(time.DateOnly, v.EndOfLifeDate)
-				if v.EndOfLifeDate == "" || time.Now().Before(t) {
-					branches = append(branches, v.Branch)
-				}
-			}
-			if unreleased != nil {
-				branches = insertBeforeDefault(branches, branchName(unreleased))
-			}
 			return json.NewEncoder(cmd.OutOrStdout()).Encode(ActiveBranches{branches})
 		}
 		return yaml.NewEncoder(cmd.OutOrStdout()).Encode(out)
 	},
+}
+
+// assembleVersions builds the versions.yml entries and the active branch list
+// from fetched releases and branch names. A line whose releases are all drafts
+// is skipped: the preview entry covers that line while the release is being
+// prepared.
+func assembleVersions(
+	edition, minVersion string, lifetimeMonths, ltsLifetimeMonths int,
+	releases []github.GQLRelease, branchNames []string,
+) ([]versionfile.VersionEntry, []string, error) {
+	minVersionVer := semver.MustParse(minVersion)
+	byVersion := map[string][]github.GQLRelease{}
+	for i := range releases {
+		curVersion := releases[i].SemVer()
+		if curVersion.Prerelease() != "" {
+			continue
+		}
+		if curVersion.LessThan(minVersionVer) {
+			continue
+		}
+		release := fmt.Sprintf("%d.%d.x", curVersion.Major(), curVersion.Minor())
+		byVersion[release] = append(byVersion[release], releases[i])
+	}
+	var out []versionfile.VersionEntry
+	for releaseName, lineReleases := range byVersion {
+		if !slices.ContainsFunc(lineReleases, github.GQLRelease.IsReleased) {
+			continue
+		}
+		entry, err := versionfile.BuildVersionEntry(edition, releaseName, lifetimeMonths, ltsLifetimeMonths, lineReleases)
+		if err != nil {
+			return nil, nil, err
+		}
+		out = append(out, entry)
+	}
+	if len(out) == 0 {
+		return nil, nil, fmt.Errorf("no published releases found in %d releases", len(releases))
+	}
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].Less(out[j])
+	})
+	latestReleased := latestReleasedVersion(releases)
+	unreleased := newestUnreleasedBranch(latestReleased, branchNames)
+	devRelease := regexp.MustCompile(`\.[0-9]+$`).ReplaceAllString(latestReleased.IncMinor().String(), ".x")
+	if unreleased != nil {
+		devRelease = branchPattern(unreleased)
+	}
+	out = append(out, versionfile.VersionEntry{
+		Edition: edition,
+		Version: "preview",
+		Branch:  "master",
+		Label:   "dev",
+		Release: devRelease,
+	})
+	var branches []string
+	for _, v := range out {
+		t, _ := time.Parse(time.DateOnly, v.EndOfLifeDate)
+		if v.EndOfLifeDate == "" || time.Now().Before(t) {
+			branches = append(branches, v.Branch)
+		}
+	}
+	if unreleased != nil {
+		branches = insertBeforeDefault(branches, branchName(unreleased))
+	}
+	return out, branches, nil
 }
 
 var releaseBranchRe = regexp.MustCompile(`^release-(\d+)\.(\d+)$`)
@@ -164,6 +187,9 @@ func branchName(v *semver.Version) string {
 // insertBeforeDefault puts an unreleased branch before the default branch
 // ("master"), which is always last, so consumers see it during the release cycle.
 func insertBeforeDefault(branches []string, unreleased string) []string {
+	if slices.Contains(branches, unreleased) {
+		return branches
+	}
 	out := make([]string, 0, len(branches)+1)
 	inserted := false
 	for _, b := range branches {
