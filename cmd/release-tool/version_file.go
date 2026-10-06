@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -67,12 +68,11 @@ var versionFile = &cobra.Command{
 		sort.Slice(out, func(i, j int) bool {
 			return out[i].Less(out[j])
 		})
-		latestReleased := semver.MustParse(out[len(out)-1].Version)
-		branchNames, err := gqlClient.ReleaseBranches(cmd.Context(), config.repo)
-		if err != nil {
-			return err
+		latestReleased := latestReleasedVersion(res)
+		if latestReleased == nil {
+			latestReleased = semver.MustParse(out[len(out)-1].Version)
 		}
-		unreleased := newestUnreleasedBranch(latestReleased, branchNames)
+		unreleased := newestUnreleasedBranch(latestReleased, releaseBranchNames(cmd.Context(), gqlClient, config.repo))
 		devRelease := regexp.MustCompile(`\.[0-9]+$`).ReplaceAllString(latestReleased.IncMinor().String(), ".x")
 		if unreleased != nil {
 			devRelease = branchPattern(unreleased)
@@ -104,6 +104,34 @@ var versionFile = &cobra.Command{
 
 var releaseBranchRe = regexp.MustCompile(`^release-(\d+)\.(\d+)$`)
 
+// releaseBranchNames fetches the repo's branch names for unreleased-branch
+// detection. The lookup is advisory: on failure it returns nil so the daily
+// regeneration falls back to the release-only output instead of failing.
+func releaseBranchNames(ctx context.Context, cl *github.GQLClient, repo string) []string {
+	names, err := cl.ReleaseBranches(ctx, repo)
+	if err != nil {
+		return nil
+	}
+	return names
+}
+
+// latestReleasedVersion returns the highest version among published
+// (non-draft, non-prerelease) releases. Drafts are excluded so a release
+// being prepared does not mask its own branch.
+func latestReleasedVersion(releases []github.GQLRelease) *semver.Version {
+	var latest *semver.Version
+	for i := range releases {
+		if !releases[i].IsReleased() {
+			continue
+		}
+		v := releases[i].SemVer()
+		if latest == nil || v.GreaterThan(latest) {
+			latest = v
+		}
+	}
+	return latest
+}
+
 // newestUnreleasedBranch returns the version of the newest release-X.Y branch
 // that is ahead of every published release line, or nil when no branch is
 // ahead (the normal state right after a release).
@@ -115,7 +143,7 @@ func newestUnreleasedBranch(latestReleased *semver.Version, branches []string) *
 			continue
 		}
 		v := semver.MustParse(m[1] + "." + m[2] + ".0")
-		if v.Compare(latestReleased) <= 0 {
+		if latestReleased != nil && v.Compare(latestReleased) <= 0 {
 			continue
 		}
 		if newest == nil || v.GreaterThan(newest) {

@@ -4,7 +4,63 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
+
+	"github.com/kumahq/ci-tools/cmd/internal/github"
 )
+
+func TestLatestReleasedVersion(t *testing.T) {
+	tests := []struct {
+		name     string
+		releases []github.GQLRelease
+		expected string
+	}{
+		{
+			name: "draft release does not mask its own branch",
+			releases: []github.GQLRelease{
+				{Name: "v2.14.5"},
+				{Name: "v3.0.0", IsDraft: true},
+			},
+			expected: "2.14.5",
+		},
+		{
+			name: "prereleases are ignored",
+			releases: []github.GQLRelease{
+				{Name: "v2.14.5"},
+				{Name: "v3.0.0-rc1", IsPrerelease: true},
+			},
+			expected: "2.14.5",
+		},
+		{
+			name: "highest published wins",
+			releases: []github.GQLRelease{
+				{Name: "v2.13.11"},
+				{Name: "v2.14.5"},
+				{Name: "v2.7.30"},
+			},
+			expected: "2.14.5",
+		},
+		{
+			name:     "no published releases",
+			releases: []github.GQLRelease{{Name: "v3.0.0", IsDraft: true}},
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := latestReleasedVersion(tt.releases)
+			if tt.expected == "" {
+				if got != nil {
+					t.Errorf("latestReleasedVersion() = %v, want nil", got)
+				}
+				return
+			}
+			if got == nil || got.String() != tt.expected {
+				t.Errorf("latestReleasedVersion() = %v, want %s", got, tt.expected)
+			}
+		})
+	}
+}
 
 func TestNewestUnreleasedBranch(t *testing.T) {
 	tests := []struct {
@@ -44,6 +100,12 @@ func TestNewestUnreleasedBranch(t *testing.T) {
 			expected:       "",
 		},
 		{
+			name:           "nil latest treats every release branch as unreleased",
+			latestReleased: "",
+			branches:       []string{"master", "release-3.0"},
+			expected:       "3.0.0",
+		},
+		{
 			name:           "no branches at all",
 			latestReleased: "2.14.5",
 			branches:       nil,
@@ -53,7 +115,10 @@ func TestNewestUnreleasedBranch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			latest := semver.MustParse(tt.latestReleased)
+			var latest *semver.Version
+			if tt.latestReleased != "" {
+				latest = semver.MustParse(tt.latestReleased)
+			}
 			got := newestUnreleasedBranch(latest, tt.branches)
 			if tt.expected == "" {
 				if got != nil {
