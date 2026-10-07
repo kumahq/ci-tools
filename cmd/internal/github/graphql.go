@@ -228,6 +228,28 @@ query($name: String!, $owner: String!) {
 	return all, nil
 }
 
+// ReleaseBranches returns every branch name of the repository, paginated.
+func (c GQLClient) ReleaseBranches(ctx context.Context, repo string) ([]string, error) {
+	owner, name := SplitRepo(repo)
+	opts := &github.BranchListOptions{}
+	opts.PerPage = 100
+
+	var out []string
+	for {
+		branches, resp, err := c.Cl.Repositories.ListBranches(ctx, owner, name, opts)
+		if err != nil {
+			return nil, err
+		}
+		for _, b := range branches {
+			out = append(out, b.GetName())
+		}
+		if resp.NextPage == 0 {
+			return out, nil
+		}
+		opts.Page = resp.NextPage
+	}
+}
+
 func (c GQLClient) HistoryGraphQl(repo, branch, commitLimit string) ([]GQLCommit, error) {
 	owner, name := SplitRepo(repo)
 	var out []GQLCommit
