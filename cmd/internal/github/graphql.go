@@ -388,7 +388,7 @@ func (c GQLClient) UpsertRelease(
 			TagName: releasePayload.TagName,
 			Name:    releasePayload.Name,
 			Body:    releasePayload.Body,
-			Draft:   github.Ptr(releasePayload.Draft),
+			Draft:   new(releasePayload.Draft),
 		})
 
 		return err
@@ -408,7 +408,7 @@ func (c GQLClient) UpsertRelease(
 		TagName: &releasePayload.TagName,
 		Name:    releasePayload.Name,
 		Body:    releasePayload.Body,
-		Draft:   github.Ptr(releasePayload.Draft),
+		Draft:   new(releasePayload.Draft),
 	})
 
 	return err

@@ -157,8 +157,8 @@ TODO summary of some simple stuff.
 			}
 
 			// Normalize release name to not have v prefix (SLSA provenance may create releases with v prefix)
-			release.Name = github2.Ptr(releaseName)
-			release.Body = github2.Ptr(body)
+			release.Name = new(releaseName)
+			release.Body = new(body)
 
 			return nil
 		})
