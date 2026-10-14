@@ -226,6 +226,8 @@ func TestReleaseTagNormalization(t *testing.T) {
 }
 
 func TestCheckHelmIndex(t *testing.T) {
+	t.Setenv("HELM_CACHE_HOME", t.TempDir())
+
 	t.Run("chart resolves", func(t *testing.T) {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/kuma-2.14.4.tgz", func(w http.ResponseWriter, r *http.Request) {

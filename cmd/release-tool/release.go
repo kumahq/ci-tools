@@ -181,11 +181,11 @@ func checkHelmIndex(repoURL, chart, version string) error {
 	}
 	r, err := http.Head(chartURL)
 	if err != nil {
-		return fmt.Errorf("couldn't get %s: %w", chartURL, err)
+		return fmt.Errorf("couldn't get metadata for %s: %w", chartURL, err)
 	}
 	_ = r.Body.Close()
 	if r.StatusCode != http.StatusOK {
-		return fmt.Errorf("couldn't get %s: status %d", chartURL, r.StatusCode)
+		return fmt.Errorf("couldn't get metadata for %s: status %d", chartURL, r.StatusCode)
 	}
 	return nil
 }
@@ -225,7 +225,7 @@ var helmChartCmd = &cobra.Command{
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Found helm chart release %s\n", expectedName)
 		// TODO we could update the release with a link to artifactory
 
-		if chartsIndexURL == "" {
+		if chartsRepoURL == "" {
 			return nil
 		}
 
@@ -235,11 +235,11 @@ var helmChartCmd = &cobra.Command{
 		}
 		var merr *multierror.Error
 		for _, chart := range charts {
-			if err := checkHelmIndex(chartsIndexURL, chart, releaseVersion); err != nil {
+			if err := checkHelmIndex(chartsRepoURL, chart, releaseVersion); err != nil {
 				merr = multierror.Append(merr, err)
 				continue
 			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Found chart %s %s in %s index\n", chart, releaseVersion, chartsIndexURL)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Found chart %s %s in %s\n", chart, releaseVersion, chartsRepoURL)
 		}
 		return merr.ErrorOrNil()
 	},
@@ -345,11 +345,11 @@ var releaseCmd = &cobra.Command{
 }
 
 var (
-	binaries       []string
-	chartRepo      string
-	urlTemplate    string
-	chartsIndexURL string
-	helmCharts     []string
+	binaries      []string
+	chartRepo     string
+	urlTemplate   string
+	chartsRepoURL string
+	helmCharts    []string
 )
 
 func init() {
@@ -359,7 +359,7 @@ func init() {
 	helmChartCmd.Flags().StringVar(&chartRepo, "charts-repo", "", "The repository to query")
 	helmChartCmd.Flags().StringVar(&config.repo, "repo", "kumahq/kuma", "The repository to query")
 	helmChartCmd.Flags().StringVar(&config.release, "release", "", "The name of the release to publish")
-	helmChartCmd.Flags().StringVar(&chartsIndexURL, "charts-index-url", "https://kumahq.github.io/charts", "The Helm chart repository index to verify the release against, empty to skip")
+	helmChartCmd.Flags().StringVar(&chartsRepoURL, "charts-repo-url", "https://kumahq.github.io/charts", "The Helm chart repository to verify the release against, empty to skip")
 	helmChartCmd.Flags().StringSliceVar(&helmCharts, "charts", helmCharts, "A comma separated list of chart names to verify in the index (defaults to the repo name, e.g. kuma)")
 
 	binariesCmd.Flags().StringVar(&config.repo, "repo", "kumahq/kuma", "The repository to query")
