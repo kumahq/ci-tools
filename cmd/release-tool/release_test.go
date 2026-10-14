@@ -318,3 +318,16 @@ entries:
 		}
 	})
 }
+
+func TestLastMinorOfMajor(t *testing.T) {
+	branches := []string{"master", "release-2.9", "release-2.14", "release-2.13", "release-3.0", "release-2.x", "release-1.8"}
+
+	got, err := lastMinorOfMajor(branches, 2)
+	if err != nil || got.String() != "2.14.0" {
+		t.Fatalf("expected 2.14.0, got %v (err %v)", got, err)
+	}
+
+	if _, err := lastMinorOfMajor(branches, 4); err == nil {
+		t.Fatal("expected an error when no branch of the major exists")
+	}
+}

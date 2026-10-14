@@ -33,13 +33,25 @@ var githubReleaseChangelogCmd = &cobra.Command{
 	Short: "create or update a release in github with the generated changelog",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		branch := fmt.Sprintf("release-%d.%d", version.Major(), version.Minor())
+		gqlClient, err := github.NewGQLClient(config.useGHAuth)
+		if err != nil {
+			return err
+		}
+
 		var prevVersion *semver.Version
-		if version.Major() == 0 && version.Minor() == 0 {
-			return fmt.Errorf("script doesn't work with new major versions")
-		} else if version.Patch() == 0 {
-			prevVersion = semver.New(version.Major(), version.Minor()-1, 0, "", "")
-		} else {
+		switch {
+		case version.Patch() != 0:
 			prevVersion = semver.New(version.Major(), version.Minor(), version.Patch()-1, "", "")
+		case version.Minor() != 0:
+			prevVersion = semver.New(version.Major(), version.Minor()-1, 0, "", "")
+		default:
+			branches, err := gqlClient.ReleaseBranches(cmd.Context(), config.repo)
+			if err != nil {
+				return err
+			}
+			if prevVersion, err = lastMinorOfMajor(branches, version.Major()-1); err != nil {
+				return err
+			}
 		}
 
 		header := `We are excited to announce the latest release !
@@ -60,11 +72,6 @@ TODO summary of some simple stuff.
 `
 		}
 
-		gqlClient, err := github.NewGQLClient(config.useGHAuth)
-		if err != nil {
-			return err
-		}
-
 		prevTag := NormalizeVersionTag(prevVersion.String())
 
 		fromCommit, err := gqlClient.CommitByRef(config.repo, prevTag)
@@ -82,7 +89,7 @@ TODO summary of some simple stuff.
 				return err
 			}
 			if mergeBase != fromCommit {
-				prevBranch := fmt.Sprintf("release-%d.%d", version.Major(), version.Minor()-1)
+				prevBranch := fmt.Sprintf("release-%d.%d", prevVersion.Major(), prevVersion.Minor())
 				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "tag %s not reachable from %s, falling back to merge-base with %s\n", prevTag, branch, prevBranch)
 				fromCommit, err = gqlClient.MergeBase(cmd.Context(), config.repo, prevBranch, branch)
 				if err != nil {
@@ -376,4 +383,22 @@ func init() {
 	releaseCmd.AddCommand(helmChartCmd)
 	releaseCmd.AddCommand(binariesCmd)
 	releaseCmd.AddCommand(dockerCmd)
+}
+
+// lastMinorOfMajor returns X.Y.0 for the highest release-X.Y branch of the given major.
+func lastMinorOfMajor(branches []string, major uint64) (*semver.Version, error) {
+	var last *semver.Version
+	for _, b := range branches {
+		v, err := semver.StrictNewVersion(strings.TrimPrefix(b, "release-") + ".0")
+		if !strings.HasPrefix(b, "release-") || err != nil || v.Major() != major {
+			continue
+		}
+		if last == nil || v.GreaterThan(last) {
+			last = v
+		}
+	}
+	if last == nil {
+		return nil, fmt.Errorf("no release-%d.x branch to take the previous version from", major)
+	}
+	return last, nil
 }
