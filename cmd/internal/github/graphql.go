@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/google/go-github/v90/github"
+	"github.com/google/go-github/v92/github"
 	"golang.org/x/net/http2"
 )
 
@@ -410,7 +410,7 @@ func (c GQLClient) UpsertRelease(
 			TagName: releasePayload.TagName,
 			Name:    releasePayload.Name,
 			Body:    releasePayload.Body,
-			Draft:   github.Ptr(releasePayload.Draft),
+			Draft:   new(releasePayload.Draft),
 		})
 
 		return err
@@ -430,7 +430,7 @@ func (c GQLClient) UpsertRelease(
 		TagName: &releasePayload.TagName,
 		Name:    releasePayload.Name,
 		Body:    releasePayload.Body,
-		Draft:   github.Ptr(releasePayload.Draft),
+		Draft:   new(releasePayload.Draft),
 	})
 
 	return err
