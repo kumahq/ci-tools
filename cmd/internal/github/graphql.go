@@ -13,8 +13,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/google/go-github/v90/github"
-	"golang.org/x/net/http2"
+	"github.com/google/go-github/v92/github"
 )
 
 type GQLOutput struct {
@@ -163,15 +162,13 @@ func NewGQLClient(useGHAuth bool) (*GQLClient, error) {
 		return nil, err
 	}
 
-	// Configure HTTP client with HTTP/2-specific timeouts for large GraphQL queries
-	// GitHub's GraphQL API uses HTTP/2, which requires http2.Transport for proper timeout handling
-	// ReadIdleTimeout prevents stream cancellation during long-running queries (500+ commits)
-	// by sending ping frames to keep the connection alive
 	httpClient := &http.Client{
 		Timeout: 5 * time.Minute,
-		Transport: &http2.Transport{
-			ReadIdleTimeout: 5 * time.Minute,
-			PingTimeout:     30 * time.Second,
+		Transport: &http.Transport{
+			HTTP2: &http.HTTP2Config{
+				SendPingTimeout: 5 * time.Minute,
+				PingTimeout:     30 * time.Second,
+			},
 		},
 	}
 
@@ -226,6 +223,28 @@ query($name: String!, $owner: String!) {
 	}
 
 	return all, nil
+}
+
+// ReleaseBranches returns every branch name of the repository, paginated.
+func (c GQLClient) ReleaseBranches(ctx context.Context, repo string) ([]string, error) {
+	owner, name := SplitRepo(repo)
+	opts := &github.BranchListOptions{}
+	opts.PerPage = 100
+
+	var out []string
+	for {
+		branches, resp, err := c.Cl.Repositories.ListBranches(ctx, owner, name, opts)
+		if err != nil {
+			return nil, err
+		}
+		for _, b := range branches {
+			out = append(out, b.GetName())
+		}
+		if resp.NextPage == 0 {
+			return out, nil
+		}
+		opts.Page = resp.NextPage
+	}
 }
 
 func (c GQLClient) HistoryGraphQl(repo, branch, commitLimit string) ([]GQLCommit, error) {
@@ -388,7 +407,7 @@ func (c GQLClient) UpsertRelease(
 			TagName: releasePayload.TagName,
 			Name:    releasePayload.Name,
 			Body:    releasePayload.Body,
-			Draft:   github.Ptr(releasePayload.Draft),
+			Draft:   new(releasePayload.Draft),
 		})
 
 		return err
@@ -408,7 +427,7 @@ func (c GQLClient) UpsertRelease(
 		TagName: &releasePayload.TagName,
 		Name:    releasePayload.Name,
 		Body:    releasePayload.Body,
-		Draft:   github.Ptr(releasePayload.Draft),
+		Draft:   new(releasePayload.Draft),
 	})
 
 	return err
