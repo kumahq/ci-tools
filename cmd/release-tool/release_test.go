@@ -331,3 +331,16 @@ func TestLastMinorOfMajor(t *testing.T) {
 		t.Fatal("expected an error when no branch of the major exists")
 	}
 }
+
+func TestDefaultChartsRepoURL(t *testing.T) {
+	tests := map[string]string{
+		"kumahq/charts":         "https://kumahq.github.io/charts",
+		"Kong/kong-mesh-charts": "https://kong.github.io/kong-mesh-charts",
+		"charts":                "",
+	}
+	for in, want := range tests {
+		if got := defaultChartsRepoURL(in); got != want {
+			t.Errorf("defaultChartsRepoURL(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

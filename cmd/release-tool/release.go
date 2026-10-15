@@ -174,6 +174,16 @@ TODO summary of some simple stuff.
 	},
 }
 
+// defaultChartsRepoURL returns the GitHub Pages site that serves the index of a charts
+// repository, e.g. kong/kong-mesh-charts -> https://kong.github.io/kong-mesh-charts.
+func defaultChartsRepoURL(chartRepo string) string {
+	owner, name, ok := strings.Cut(chartRepo, "/")
+	if !ok {
+		return ""
+	}
+	return fmt.Sprintf("https://%s.github.io/%s", strings.ToLower(owner), name)
+}
+
 // checkHelmIndex verifies a chart is both listed in the repo's index.yaml at the given
 // version and that its packaged tarball actually resolves. A GitHub release for the chart
 // (checked above) doesn't guarantee the index.yaml served from e.g. GitHub Pages has been
@@ -232,6 +242,9 @@ var helmChartCmd = &cobra.Command{
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Found helm chart release %s\n", expectedName)
 		// TODO we could update the release with a link to artifactory
 
+		if !cmd.Flags().Changed("charts-repo-url") {
+			chartsRepoURL = defaultChartsRepoURL(chartRepo)
+		}
 		if chartsRepoURL == "" {
 			return nil
 		}
@@ -366,7 +379,7 @@ func init() {
 	helmChartCmd.Flags().StringVar(&chartRepo, "charts-repo", "", "The repository to query")
 	helmChartCmd.Flags().StringVar(&config.repo, "repo", "kumahq/kuma", "The repository to query")
 	helmChartCmd.Flags().StringVar(&config.release, "release", "", "The name of the release to publish")
-	helmChartCmd.Flags().StringVar(&chartsRepoURL, "charts-repo-url", "https://kumahq.github.io/charts", "The Helm chart repository to verify the release against, empty to skip")
+	helmChartCmd.Flags().StringVar(&chartsRepoURL, "charts-repo-url", "", "The Helm chart repository to verify the release against (defaults to the GitHub Pages site of --charts-repo), empty to skip")
 	helmChartCmd.Flags().StringSliceVar(&helmCharts, "charts", helmCharts, "A comma separated list of chart names to verify in the index (defaults to the repo name, e.g. kuma)")
 
 	binariesCmd.Flags().StringVar(&config.repo, "repo", "kumahq/kuma", "The repository to query")
