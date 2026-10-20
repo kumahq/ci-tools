@@ -22,7 +22,7 @@ jobs:
   # for more info. We have "Default to PR title for squash merge commits" enabled.
   commit-lint:
     name: "Check PR title"
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -37,7 +37,7 @@ jobs:
           commitlint --config .github/commitlint.config.js --edit=<(echo "${TITLE}")
   check:
     name: "check"
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
